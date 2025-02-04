@@ -1,6 +1,6 @@
-from Transformer_torch_pretrained.Video_Transformer.Video_Transformer_model import ViT_Encoder_Video
-from Transformer_torch_pretrained.Audio_Transformer.Audio_Transformer_model import ViT_Encoder, ast_feature_extract
-from Transformer_torch_pretrained.Video_Transformer.EEG_Transformer_fix import ShallowConvNet
+from Transformer_Video import ViT_Encoder_Video
+from Transformer_Audio import ViT_Encoder, ast_feature_extract
+from Transformer_EEG import ShallowConvNet
 import pickle
 from torchvision import transforms
 import torch
@@ -9,7 +9,8 @@ from PIL import Image
 import torch.nn as nn
 import torch.nn.functional as FF
 from torch.utils.data import DataLoader, TensorDataset
-
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 class FusionNN(nn.Module):
     def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim, dropout=0.5):
@@ -213,7 +214,7 @@ def load_models(base_dir, subject_idx):
         embed_pos=True
     )
 
-    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     audio_model_path = os.path.join(base_dir, "Audio", f"model_with_weights_audio_finetuned_{subject_idx}.pth")
     state_dict_aud = torch.load(audio_model_path, map_location=torch.device('cpu'))
@@ -255,8 +256,6 @@ def load_models(base_dir, subject_idx):
 
     return model_aud, model_vis, model_eeg, model_av
 
-import torch
-
 def predict_eeg(te_x_av, te_y_av, model_eeg, batch_size=32):
     model_eeg.eval()
 
@@ -285,8 +284,6 @@ def predict_eeg(te_x_av, te_y_av, model_eeg, batch_size=32):
     return accuracy
 
 
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
 def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label, tsne = True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -343,36 +340,6 @@ def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label,
         plt.show()
 
     return accuracy
-
-
-import torch.nn.functional as F
-
-'''def train_contrastive_eeg(model, train_loader, epochs = 10):
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    ce_loss = nn.CrossEntropyLoss()
-    
-    for epoch in range(epochs):
-        for data, labels in train_loader:
-            optimizer.zero_grad()
-    
-            # Forward pass
-            embeddings, emotion_out, arousal_out, valence_out = model(data)
-    
-            # Compute classification losses
-            emotion_loss = ce_loss(emotion_out, labels['emotion'])
-            arousal_loss = ce_loss(arousal_out, labels['arousal'])
-            valence_loss = ce_loss(valence_out, labels['valence'])
-    
-            # Compute contrastive loss
-            contrast_loss = contrastive_loss(embeddings, labels['emotion'])
-    
-            # Combine losses
-            total_loss = emotion_loss + 0.5 * (arousal_loss + valence_loss) + 0.2 * contrast_loss
-    
-            # Backward pass and optimization
-            total_loss.backward()
-            optimizer.step()'''
-
 
 
 def contrastive(Data, Models, optimizer=None, epochs=15, batch_size=32, temperature=0.07, alpha=0.5, beta=0.5, gamma=0.5, freeze_epochs=2):
@@ -546,8 +513,6 @@ def contrastive(Data, Models, optimizer=None, epochs=15, batch_size=32, temperat
     # Return updated EEG model
     return model_eeg
 
-###################################################
-
 class NTXentLoss(torch.nn.Module):
     def __init__(self, temperature=0.5):
         super(NTXentLoss, self).__init__()
@@ -573,7 +538,6 @@ class TripletLoss(torch.nn.Module):
 
     def forward(self, anchor, positive, negative):
         return self.criterion(anchor, positive, negative)
-
 
 def select_hard_negatives(embeddings, labels):
     """
@@ -608,10 +572,8 @@ def select_hard_negatives(embeddings, labels):
 
     return torch.stack(negatives)
 
-###################################################
-
 def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr=0.005, batch_size=32, eeg_model_freeze = "freeze", fusion_model_freeze = "freeze"):
-    
+
     def contrastive_loss2(embeddings, labels, temperature=0.5):
         embeddings = FF.normalize(embeddings, p=2, dim=1)  # L2 normalization
         similarity_matrix = torch.matmul(embeddings, embeddings.T) / temperature
@@ -815,7 +777,7 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             eeg_shared, eeg_class = zero_shot_model.forward_eeg(eeg_features)
             av_logits = fusion_model.fc2(av_shared)  # Output logits for classification (shape: B, num_classes)
 
-            #############################################    
+            #############################################
 
             # Compute losses
             loss_classification_eeg = FF.cross_entropy(eeg_class, batch_y)
@@ -855,7 +817,7 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             print('loss_eeg:', loss_classification_eeg)
             print('loss_cent:', loss_centroid)
             print('loss_av:', loss_classification_av)
-            
+
             ##################################################
 
         # Evaluation loop
@@ -935,7 +897,6 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
 
         # Return predictions and labels
     return all_av_predictions, all_eeg_orig_predictions, all_eeg_centroid_predictions, all_labels
-
 
 def predict_zeroshot_e_av(Data, Models, model_zs):
 

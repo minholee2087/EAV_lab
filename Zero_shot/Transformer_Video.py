@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 from timm.layers import Mlp, use_fused_attn
-from Dataload_audio import DataLoadAudio
-from EAV_datasplit import EAVDataSplit
 import numpy as np
 from transformers import AutoImageProcessor
 
@@ -152,6 +149,7 @@ class Block(nn.Module):
         x = x + self.drop_path1(self.ls1(self.attn(self.norm1(x))))
         x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
         return x
+
 class EEG_decoder(nn.Module):
     def __init__(self, eeg_channel = 30, dropout=0.1):
         super().__init__()
@@ -171,6 +169,7 @@ class EEG_decoder(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+
 class PatchEmbed(nn.Module):
     """ 2D Image to Patch Embedding
     """
@@ -216,7 +215,6 @@ class PatchEmbed(nn.Module):
         x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         #x = self.norm(x)
         return x
-
 
 class ViT_Encoder_Video(nn.Module):
     def __init__(self, img_size=[224, 224], in_chans=3, patch_size=16, stride=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4.,
@@ -297,7 +295,6 @@ class ViT_Encoder_Video(nn.Module):
             x = self.head(x[:, 0])
         return x
 
-
 class Trainer_uni:
     def __init__(self, model, data, lr=1e-4, batch_size=32, num_epochs=10, device=None):
 
@@ -308,7 +305,7 @@ class Trainer_uni:
         self.tr_x, self.tr_y, self.te_x, self.te_y = data
         self.frame_per_sample = np.shape(self.tr_x)[1]
         self.processor = AutoImageProcessor.from_pretrained(r'D:\Dropbox\DATASETS\EAV\Pre_trained_models\facial_emotions_image_detection')
-        
+
         self.model = model
         #print(model)
         #model_path = "model_with_weights_video.pth"
@@ -321,7 +318,7 @@ class Trainer_uni:
 
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-        
+
         print("Image preprocessing..")
         self.train_dataloader = self._prepare_dataloader(self.tr_x, self.tr_y, shuffle=True)[0]
         self.test_dataloader = self._prepare_dataloader(self.te_x, self.te_y, shuffle=False)[0]
@@ -330,7 +327,7 @@ class Trainer_uni:
         print("Ended..")
         # torch.save(self.train_dataloader, 'train_dataloader.pth')
         # torch.save(self.test_dataloader, 'test_dataloader.pth')
-        
+
 
     def _prepare_dataloader(self, x, y, shuffle=True):
         processed_x = self.preprocess_images(x)
@@ -348,16 +345,16 @@ class Trainer_uni:
                 pixel_values = processed.pixel_values.squeeze()
                 pixel_values_list.append(pixel_values)
         return torch.stack(pixel_values_list)
-    
 
-            
+
+
     def train(self, epochs=20, lr=None):
-        
+
         lr = lr if lr is not None else self.initial_lr
         if lr is not None:
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = lr
-        
+
         best_accuracy = 0.0
         best_epoch = 0
 
@@ -366,16 +363,16 @@ class Trainer_uni:
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             self.model = nn.DataParallel(self.model)
-            
+
         if isinstance(self.model, nn.DataParallel):
-            self.model = self.model.module   
-        
+            self.model = self.model.module
+
         for epoch in range(epochs):
             self.model.train()  # Set model to training mode
             total_loss = 0.0
             correct = 0
             total = 0
-            
+
             for batch_idx, (data, targets) in enumerate(self.train_dataloader):
                 data = data.to(self.device)
                 targets = targets.to(self.device)
@@ -385,20 +382,20 @@ class Trainer_uni:
                 loss.backward()
                 self.optimizer.step()
                 total_loss += loss.item()
-    
+
                 # Calculate training accuracy
                 _, predicted = scores.max(1)
                 correct += predicted.eq(targets).sum().item()
                 total += targets.size(0)
-    
+
                 del data
                 del targets
-            
+
             # Calculate training accuracy for the epoch
             epoch_loss = total_loss / len(self.train_dataloader)
             epoch_accuracy = 100.0 * correct / total
             print(f"Epoch [{epoch+1}/{epochs}], Training Loss: {epoch_loss:.4f}, Training Accuracy: {epoch_accuracy:.2f}%")
-            
+
             # Validate the model after each epoch
             if self.test_dataloader:
                 outputs_test, test_accuracy = self.validate(epoch, epochs)
@@ -408,8 +405,8 @@ class Trainer_uni:
         self.outputs_test = outputs_test
         if best_accuracy is not None:
             print(f"Best model is at epoch {best_epoch} with testing accuracy: {best_accuracy:.2f}%")
-        
-        
+
+
 
     def validate(self, epoch, epochs):
         outputs_batch = []
@@ -420,14 +417,14 @@ class Trainer_uni:
             for data, targets in self.test_dataloader:
                 data = data.to(self.device)
                 targets = targets.to(self.device)
-    
+
                 scores = self.model(data)
                 loss = self.criterion(scores, targets)
                 total_loss += loss.item()
                 predictions = scores.argmax(dim=1)
                 total_correct += (predictions == targets).sum().item()
-                
-                
+
+
                 logits = scores
                 logits_cpu = logits.detach().cpu().numpy()
                 outputs_batch.append(logits_cpu)
@@ -437,25 +434,24 @@ class Trainer_uni:
                 # Clear variables to free memory
                 del data
                 del targets
-            
-            
-        
+
+
+
         #print(f"Outputs batch shape before concatenation: {[x.shape for x in outputs_batch]}")
         outputs_test = np.concatenate(outputs_batch, axis=0)
         #print(f"Shape of outputs_test after concatenation: {self.outputs_test.shape}")
         del(outputs_batch)
-    
+
         avg_loss = total_loss / len(self.test_dataloader)
         accuracy = 100 * total_correct / len(self.test_dataloader.dataset)
         print(f"Validation - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
-        
+
       #  if epoch == epochs-1 and not freeze: # we saved test prediction only at last epoch, and finetuning
               #  self.feature_map = self.model.feature_map
-        
+
         return outputs_test, accuracy
 
 
 
 
 
-    

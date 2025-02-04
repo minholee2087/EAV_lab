@@ -7,36 +7,11 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # Add the parent directory to the Python path
 sys.path.insert(0, parent_dir)
 
-# Now you can import the module/library located one folder above
-import Dataload_eeg
-
-#from Dataload_eeg import *
-# commented out line above and added all above
-
-#import Dataload_eeg
-import torch
-import torch.nn as nn
-#from Fusion.VIT_audio.Transformer_audio import Trainer_uni
-#from tensorflow.keras.models import Model
-
-import os
-import pickle
 from torch.utils.data import DataLoader, TensorDataset
-
-# Define the EEGNet model
-import torch.nn.functional as F
-from torch.nn.utils.parametrizations import spectral_norm
 import torch.optim as optim
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from einops import rearrange
 
 class PatchEmbedding(nn.Module):
     def __init__(self, embed_dim, num_heads, qkv_dim):
@@ -57,6 +32,77 @@ class PatchEmbedding(nn.Module):
             outputs_V_res.append(V)
         outputs_V_res = torch.cat(outputs_V_res, dim=-1)
         return outputs_V_res
+
+class ShallowConvNet(nn.Module):
+    def __init__(self, nb_classes, Chans=30, Samples=500, dropoutRate=0.5, num_layers=2):
+        super(ShallowConvNet, self).__init__()
+
+        self.conv1_depth = 40
+        self.eeg_ch = 30
+
+        # Convolutional block
+        self.conv1 = nn.Conv2d(1, self.conv1_depth, (1, 13), bias=False)
+        self.pool = nn.AvgPool2d((1, 35), stride=(1, 7))
+        self.dropout = nn.Dropout(dropoutRate)
+
+        self.qkv_dim = 40
+        self.num_heads = 1
+        embed_dim = 40
+        self.embedding = PatchEmbedding(embed_dim, self.num_heads, self.qkv_dim)
+
+        # Transformer Layers
+        self.transformer_layers = nn.ModuleList([
+            TransformerLayer(embed_dim=embed_dim, num_heads=self.num_heads, qkv_dim=self.qkv_dim, drop_p=dropoutRate)
+            for _ in range(num_layers)
+        ])
+
+        self.batchnorm = nn.BatchNorm2d(40, eps=1e-05, momentum=0.1)
+        #self.fc = nn.Linear(2600, 768, bias=False)
+        self.fc = nn.Linear(2600, nb_classes)
+
+    def feature(self, x):
+        """Extract features before the final classification layer."""
+        x = self.conv1(x)
+        batch, channels, height, width = x.shape
+
+        V = self.embedding(x)
+        for layer in self.transformer_layers:
+            V = layer(V)
+
+        x = V.permute(0, 2, 1).unsqueeze(2)
+        x = self.batchnorm(x)
+        x = torch.square(x)
+        x = self.pool(x)
+        x = torch.log(torch.clamp(x, min=1e-7, max=10000))
+
+        x = x.squeeze(2)
+        x = self.dropout(x)
+        flattened_x = torch.flatten(x, 1)  # Feature output
+        return flattened_x
+
+    def forward(self, x):
+        x = self.conv1(x)
+        batch, channels, height, width = x.shape
+
+        V = self.embedding(x)
+        for layer in self.transformer_layers:
+            V = layer(V)
+
+        x = V.permute(0, 2, 1).unsqueeze(2)
+        x = self.batchnorm(x)
+        x = torch.square(x)
+        x = self.pool(x)
+        x = torch.log(torch.clamp(x, min=1e-7, max=10000))
+
+        x = x.squeeze(2)
+        x = self.dropout(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        #x = self.fc2(x)
+        x = F.softmax(x, dim=1)
+
+        return x
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, embed_dim, num_heads, qkv_dim):
         super(MultiHeadAttention, self).__init__()
@@ -95,6 +141,7 @@ class MultiHeadAttention(nn.Module):
         outputs_V_res = torch.cat(outputs_V_res, dim=-1)
 
         return x_head + outputs_V_res  # residual
+
 class FeedForwardBlock(nn.Module):
     def __init__(self, embed_dim, expansion=4, drop_p=0.5):
         super(FeedForwardBlock, self).__init__()
@@ -107,6 +154,7 @@ class FeedForwardBlock(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         return x
+
 class TransformerLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, qkv_dim, expansion=4, drop_p=0.5):
         super(TransformerLayer, self).__init__()
@@ -196,10 +244,6 @@ class ShallowConvNet1(nn.Module):
         #x = F.softmax(x, dim=1)
 
         return x
-
-
-words = {1:'one'}
-words.get(1)
 
 class ShallowCNN(nn.Module):
     def __init__(self, nb_classes, Chans=30, Samples=500, dropoutRate=0.5):
@@ -337,7 +381,6 @@ class MultiTaskShallowConvNet(nn.Module):
         valence_output = self.fc3(x)
 
         return emotion_output, arousal_output, valence_output
-
 
 class MultiTaskShallowConvNet_upd(nn.Module):
     def __init__(self, nb_classes_emotion=5, nb_classes_arousal=2, nb_classes_valence=2, Chans=30, Samples=500,
@@ -594,7 +637,6 @@ class OrigShallowConvNet(nn.Module):
 
         return emotion_output, arousal_output, valence_output
 
-
 class MultiTaskTCT(nn.Module):
     def __init__(self, nb_classes_emotion=5, nb_classes_arousal=2, nb_classes_valence=2, Chans=30, Samples=500,
                  dropoutRate=0.5, d_model=64, nhead=4, num_layers=2):
@@ -662,7 +704,6 @@ class MultiTaskTCT(nn.Module):
 
         return emotion_output, arousal_output, valence_output
 
-
 class ConformerLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, ff_dim, dropout=0.1):
         super(ConformerLayer, self).__init__()
@@ -686,7 +727,6 @@ class ConformerLayer(nn.Module):
         ff_output = self.ff(x)
         x = self.layer_norm2(x + ff_output)
         return x
-
 
 class MultiTaskEEGConformer(nn.Module):
     def __init__(self,
@@ -763,7 +803,6 @@ class MultiTaskEEGConformer(nn.Module):
 
         return emotion_output, arousal_output, valence_output
 
-
 class Trainer_eeg:
     def __init__(self, model, data, lr=1e-3, batch_size=280, num_epochs=100, device=None):
 
@@ -837,8 +876,6 @@ class Trainer_eeg:
         avg_loss = total_loss / len(self.test_dataloader)
         accuracy = total_correct / len(self.test_dataloader.dataset)
         print(f"Validation - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
-
-###############################################
 
 class Trainer_eeg_multitask:
     def __init__(self, model, data, lr=1e-3, batch_size=280, num_epochs=100, device=None, multiloss = True):
@@ -982,9 +1019,6 @@ class Trainer_eeg_multitask:
 
         print(f"Validation - Emotion Accuracy: {emotion_accuracy:.2f}%, Arousal Accuracy: {arousal_accuracy:.2f}%, Valence Accuracy: {valence_accuracy:.2f}%")
         return res_emo, res_aro, res_val
-
-
-###############################################
 
 
 #if __name__ == "__main__":

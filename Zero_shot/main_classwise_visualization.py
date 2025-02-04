@@ -1,25 +1,10 @@
-from Contrastive_learning.Transformer_EEG import *
-from Contrastive_learning.Transformer_EEG import ShallowConvNet1
-from Contrastive_learning.Zeroshot_setting import *
-#r"C:\Users\minho.lee\Dropbox\Datasets\EAV\Input_images"
-#r"C:\Users\minho.lee\Dropbox\Datasets\EAV\Finetuned_models"
-#r"D:\Dropbox\DATASETS\EAV\Input_images"
-#r"D:\Dropbox\DATASETS\EAV\Finetuned_models"
-import seaborn as sns
-import pandas as pd
+from Transformer_EEG import *
+from Zeroshot_setting import *
 from sklearn.manifold import TSNE
-
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-from sklearn.manifold import TSNE
-
-import os
 
 def visualize_tsne(features, labels, title="t-SNE Visualization", unseen_classes=None, fname="tsne_plot"):
-
     class_labels = {
         0: 'Neutral',
         1: 'Sadness',
@@ -54,7 +39,6 @@ def visualize_tsne(features, labels, title="t-SNE Visualization", unseen_classes
             marker_styles[unseen_class] = '*'  # Use '*' for unseen classes
             marker_sizes[unseen_class] = 170  # Larger size for unseen classes
 
-
     # Plotting
     plt.figure(figsize=(10, 8))
     for label, color in custom_palette.items():
@@ -84,14 +68,16 @@ def visualize_tsne(features, labels, title="t-SNE Visualization", unseen_classes
     print(f"Saved plot as {filename}")
 
 
-
-
-results_path = "Contrastive_results.txt"
+input_pkl_dir = r"D:\Codes\EAV_github\EAV_lab\data_processing"
+#output_file = "eeg_contrastive_results.txt"
+finetuned_models_dir = r"D:\Codes\Finetuned_models_2"
+#results_path = "Contrastive_results.txt"
 results = list()
-for sub in range(2, 3):
-    Data = load_subject_data(directory = r"D:\Dropbox\DATASETS\EAV\Input_images", subject_idx= sub,  audio=True, vision=True, eeg=True)
+
+for sub in range(1, 2):
+    Data = load_subject_data(directory = input_pkl_dir, subject_idx= sub,  audio=True, vision=True, eeg=True)
     tr_x_aud, tr_y_aud, te_x_aud, te_y_aud, tr_x_vis, tr_y_vis, te_x_vis, te_y_vis, tr_x_eeg, tr_y_eeg, te_x_eeg, te_y_eeg = Data
-    Models = load_models(base_dir = r"D:\Dropbox\DATASETS\EAV\Finetuned_models", subject_idx = sub)
+    Models = load_models(base_dir = finetuned_models_dir, subject_idx = sub)
     model_aud, model_vis, hello, model_av = Models
     model_zs = ZeroShotModel(eeg_dim = 2600, shared_dim=256, num_classes=5)
     ############################################################################
@@ -114,7 +100,7 @@ for sub in range(2, 3):
     '''
 
     # Zeroshot Learning - 1 unseen class : H, S
-    Data_zs = prepare_zeroshot_data(Data, exclude_class=1)    # removed from only training
+    Data_zs = prepare_zeroshot_data(Data, exclude_class=1)    # refer to class labels
     Data_zs = prepare_zeroshot_data(Data_zs, exclude_class=3)
     tr_x_aud, tr_y_aud, te_x_aud, te_y_aud, tr_x_vis, tr_y_vis, te_x_vis, te_y_vis, tr_x_eeg, tr_y_eeg, te_x_eeg, te_y_eeg = Data_zs
     [tr_x_eeg_zs, tr_y_eeg, tr_y_arousal, tr_y_valence, te_x_eeg_zs, te_y_eeg, te_y_arousal, te_y_valence] = prepare_multilabel_data(Data_zs[-4:])
@@ -124,7 +110,6 @@ for sub in range(2, 3):
     out = zeroshot_training(Data=Data, Models=[model_aud, model_vis, model_eeg, model_av], ZeroShotModel=model_zs, epochs=7)
     results.append(out)
 
-
     tr_x_aud, tr_y_aud, te_x_aud, te_y_aud, tr_x_vis, tr_y_vis, te_x_vis, te_y_vis, tr_x_eeg, tr_y_eeg, te_x_eeg, te_y_eeg = Data
     visualize_tsne(features=model_eeg.feature(tr_x_eeg), labels=tr_y_eeg, unseen_classes= [1, 3], fname = 'tsne_eeg_zs_HS_tr')
     visualize_tsne(features=model_eeg.feature(te_x_eeg), labels=te_y_eeg, unseen_classes= [1, 3],  fname = 'tsne_eeg_zs_HS_te')
@@ -132,26 +117,14 @@ for sub in range(2, 3):
     visualize_tsne(features=model_zs.forward_eeg(model_eeg.feature(tr_x_eeg))[0], labels=tr_y_eeg, unseen_classes= [1, 3],  fname = 'tsne_eeg_zs_HS_tr_cent')
     visualize_tsne(features=model_zs.forward_eeg(model_eeg.feature(te_x_eeg))[0], labels=te_y_eeg, unseen_classes= [1, 3], fname = 'tsne_eeg_ZS_HS_te_cent')
 
-    a = 3
-
 
 # pretrained, compare with all subject
-
-
 
 #acc_post  = predict_eeg(te_x_av, te_y_av, model_eeg)
 #acc = predict_av(te_x_vis, te_x_aud, model_vis, model_aud, model_av, label = te_y_aud)
 #print(acc)
 # Data_zs = prepare_zeroshot_data(Data, exclude_class=1) #removed from only training
 # pred_eeg = predict_zeroshot_e_av(Data, Models, model_zs)
-
-'''
-'Neutral': 0,
-'Sadness': 1,
-'Anger': 2,
-'Happiness': 3,
-'Calmness': 4
-'''
 
 
 '''

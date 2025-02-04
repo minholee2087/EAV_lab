@@ -1,14 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
 from torch.utils.data import TensorDataset, DataLoader
 from transformers import ASTFeatureExtractor
 import torch.nn.functional as F
 from timm.layers import Mlp, DropPath, use_fused_attn
-from Dataload_audio import DataLoadAudio
-from EAV_datasplit import EAVDataSplit
-import numpy as np
 
 class LayerScale(nn.Module):
     def __init__(
@@ -23,6 +19,7 @@ class LayerScale(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.mul_(self.gamma) if self.inplace else x * self.gamma
+
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
     """
@@ -55,6 +52,7 @@ class DropPath(nn.Module):
 
     def extra_repr(self):
         return f'drop_prob={round(self.drop_prob,3):0.3f}'
+
 class Attention(nn.Module):
     #fused_attn: Final[bool]
     def __init__(
@@ -103,6 +101,7 @@ class Attention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
+
 class Block(nn.Module):
     def __init__(
             self,
@@ -149,6 +148,7 @@ class Block(nn.Module):
         x = x + self.drop_path1(self.ls1(self.attn(self.norm1(x))))
         x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
         return x
+
 class EEG_decoder(nn.Module):
     def __init__(self, eeg_channel = 30, dropout=0.1):
         super().__init__()
@@ -168,6 +168,7 @@ class EEG_decoder(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+
 class PatchEmbed(nn.Module):
     """ 2D Image to Patch Embedding
     """
@@ -213,8 +214,6 @@ class PatchEmbed(nn.Module):
         x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         x = self.norm(x)
         return x
-
-
 
 class ViT_Encoder(nn.Module):
     def __init__(self, img_size=[224, 224], in_chans = 3, patch_size=16, stride = 16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4.,
@@ -290,6 +289,7 @@ class ViT_Encoder(nn.Module):
         if self.head:  # classifier mode
             x = self.head(x[:, 0])
         return x
+
 class Trainer_uni:
     def __init__(self, model, data, lr=1e-4, batch_size=32, num_epochs=10, device=None):
 
@@ -357,18 +357,18 @@ class Trainer_uni:
         avg_loss = total_loss / len(self.test_dataloader)
         accuracy = total_correct / len(self.test_dataloader.dataset)
         print(f"Validation - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
+
 def ast_feature_extract(x):
     feature_extractor = ASTFeatureExtractor()
     ft = feature_extractor(x, sampling_rate=16000, padding='max_length',
                            return_tensors='pt')
     return ft['input_values']
 
-if __name__ == "__main__":
-   
+#if __name__ == "__main__":
 
     ##################################################################################
     ## Audio
-    model = ViT_Encoder(classifier=True, img_size=[1024, 128], in_chans=1, patch_size=(16, 16), stride=10,
+    '''model = ViT_Encoder(classifier=True, img_size=[1024, 128], in_chans=1, patch_size=(16, 16), stride=10,
                         embed_pos=True)
 
     aud_loader = DataLoadAudio(subject=1, parent_directory=r'D:\EAV')
@@ -380,6 +380,5 @@ if __name__ == "__main__":
     data = [tr_x_aud_ft.unsqueeze(1), tr_y_aud, te_x_aud_ft.unsqueeze(1), te_y_aud]
 
     trainer = Trainer_uni(model=model, data=data, lr=1e-5, batch_size=8, num_epochs=30)
-    trainer.train()
+    trainer.train()'''
 
-    
