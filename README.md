@@ -30,8 +30,9 @@ The experiment is designed as a **pseudo-random class-iteration sequence**:
 
 Throughout the experiment, each participant contributed **200 interactions**, resulting in a cumulative total of **8,400 interactions** across all participants.  
 
-📄 For more details, refer to the dataset paper:  
+📄 For more details, refer to the dataset paper and its GitHub repository:  
 🔗 [https://www.nature.com/articles/s41597-024-03838-4](https://www.nature.com/articles/s41597-024-03838-4)  
+🔗 [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
 
 
 ---
@@ -107,4 +108,3 @@ If you use this code and dataset, please cite:
 ├── requirements.txt                # List of required dependencies for the project  
 ├── README.md                       # Project documentation and usage instructions  
 └── LICENSE                         # License information for the repository  
-
