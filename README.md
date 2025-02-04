@@ -1,8 +1,8 @@
-This repository contains two main directories: 'Zero_shot/', which implements the Zero-Shot EEG-based emotion classification model as described in 'Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning', and 'Fusion_bottleneck/', which explores feature fusion techniques to enhance multimodal emotion recognition.
+This repository contains two main directories: 'Zero_shot/', which implements the Zero-Shot EEG-based emotion classification model as described in 'Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning' (under review), and 'Fusion_bottleneck/', which explores feature fusion techniques to enhance multimodal emotion recognition.
 
 ## Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning  
 **Overview**
-This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper: "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning".
+This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning".
 Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
 
 ## Fusion Bottleneck paper
