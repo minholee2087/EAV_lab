@@ -37,7 +37,7 @@ This repository also contains the implementation of...
 1. Downloading the Data:
    
   The EAV dataset original paper is "EAV: EEG-Audio-Video Dataset for Emotion Recognition in Conversational Contexts".
-  Follow this link 'https://github.com/nubcico/EAV' for further instructions to download the dataset. 
+  Follow this links 'https://github.com/nubcico/EAV' and 'https://zenodo.org/records/10205702' for further instructions to download the dataset. 
 
 3. Running the Model:
    
