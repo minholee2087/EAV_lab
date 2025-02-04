@@ -35,19 +35,23 @@ This repository also contains the implementation of...
 
 ## **⚙️ Setup and Installation**  
 1. Downloading the Data
-  The EAV dataset is required for training and evaluation. Follow the instructions here to request access and download the dataset.
+  The EAV dataset original paper is "EAV: EEG-Audio-Video Dataset for Emotion Recognition in Conversational Contexts".
+  Follow this link 'https://github.com/nubcico/EAV' for further instructions to download the dataset. 
 
-2. Running the Model
+3. Running the Model
+   
   Install the required dependencies:
-    pip install -r requirements.txt
-  Execute the main script:
-    python main.py
 
-3. Updating Pretrained Models
+      pip install -r requirements.txt
+   
+  Execute the main script:
+  
+      python main.py
+
+5. Updating Pretrained Models
+   
   To update the pretrained models, download them from this link and place them in the 'pretrained_models/' directory.
 
 Citation
-If you use this code, please cite this github 'https://github.com/minholee2087/EAV_lab':
 
-Original GitHub Repository for EAV dataset
-This project is based on prior research and implementations. You can find the original repository here: 'https://github.com/nubcico/EAV'.
+If you use this code and dataset, please cite this github 'https://github.com/minholee2087/EAV_lab'and EAV dataset 'https://github.com/nubcico/EAV' as well.
