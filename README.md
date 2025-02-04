@@ -90,7 +90,7 @@ If you use this code and dataset, please cite:
 │   ├── utils.py                   # Utility functions for data processing and evaluation  
 │   ├── config.yaml                # Configuration file containing model hyperparameters  
 │   ├── results                    # Directory storing model outputs, logs, and evaluations  
-├── Fusion_bottleneck/              # Adaptive Multimodal Bottleneck Transformer (AMBT) models  
+├── EAV_Fusion/              # Adaptive Multimodal Bottleneck Transformer (AMBT) models  
 │   ├── Transformer_Audio_mean.py   # Transformer model for audio modality (AMBT-Mean)  
 │   ├── Transformer_EEG_mean.py     # Transformer model for EEG modality (AMBT-Mean)  
 │   ├── Transformer_Video_mean.py   # Transformer model for video modality (AMBT-Mean)  
