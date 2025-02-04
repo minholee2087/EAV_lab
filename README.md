@@ -3,32 +3,28 @@
 
 This repository contains two main directories:  
 - **`Zero_shot/`**: Implements the Zero-Shot EEG-based emotion classification model as described in *"Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning"* (under review).  
-- **`EAV_Fusion/`**: Explores feature fusion techniques to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
+- **`EAV_Fusion/`**: Apply feature fusion technique to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
 
 ## **Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning**  
 **Overview:**  This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
 
 ## **Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion (AMBT)**  
 
-**Overview:**  This repository contains the official implementation of the Adaptive Multimodal Bottleneck Transformer (AMBT), a novel architecture designed for efficient multimodal fusion of EEG, Audio, and Vision data in emotion recognition tasks. AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—EEG, Audio, and Vision—is processed by its own dedicated Transformer model, ensuring optimal feature extraction. Through cross-modal learning, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using implicit contrastive learning. Extensive experiments on the EAV (EEG-Audio-Vision) benchmark dataset demonstrate state-of-the-art performance in multimodal fusion.
+**Overview:**  This repository contains the implementation of the Adaptive Multimodal Bottleneck Transformer (AMBT), a novel architecture designed for efficient multimodal fusion of EEG, Audio, and Vision data in emotion recognition tasks. AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—EEG, Audio, and Vision—is processed by its own dedicated Transformer model, ensuring optimal feature extraction. Through cross-modal learning, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using implicit contrastive learning. Extensive experiments on the EAV (EEG-Audio-Vision) benchmark dataset demonstrate state-of-the-art performance in multimodal fusion.
 
 ---
 
 ## **📌 Dataset Description**  
-### **EAV: EEG-Audio-Video Dataset for Emotion Recognition in Conversational Contexts**  
-We introduce a multimodal emotion dataset comprising data from **30-channel electroencephalography (EEG), audio, and video recordings** from **42 participants**. Each participant engaged in a **cue-based conversation scenario**, eliciting **five distinct emotions**:  
-- **Neutral (N)**  
-- **Anger (A)**  
-- **Happiness (H)**  
-- **Sadness (S)**  
-- **Calmness (C)**  
+### **EAV: EEG-Audio-Video Dataset**  
+A multimodal emotion dataset comprising data from 30-channel electroencephalography (EEG), audio, and video recordings from 42 participants. Each participant engaged in a cue-based conversation scenario, eliciting five distinct emotions:  
+- Neutral (N)
+- Anger (A)  
+- Happiness (H)  
+- Sadness (S)  
+- Calmness (C)  
 
-Participants engage in paired **listen/speak** sets with recordings of an experienced actor, seated in front of a **27-inch monitor** displaying visual stimuli.  
-
-The experiment is designed as a **pseudo-random class-iteration sequence**:  
-`[A, A, C, C, S, S, H, A, C, H, H, S, S, A, A, C, C, H, H, S]`.  
-
-Throughout the experiment, each participant contributed **200 interactions**, resulting in a cumulative total of **8,400 interactions** across all participants.  
+Participants engage in paired listen/speak sets with recordings of an experienced actor.  
+Throughout the experiment, each participant contributed 200 interactions, resulting in a cumulative total of 8,400 interactions across all participants.  
 
 📄 For more details, refer to the dataset paper and its GitHub repository:  
 🔗 [https://www.nature.com/articles/s41597-024-03838-4](https://www.nature.com/articles/s41597-024-03838-4)  
@@ -75,8 +71,9 @@ If you use this code and dataset, please cite:
 ---
 
 ### **⚠️ Note**  
-🚧 **This GitHub repository is a temporary draft and may be subject to changes.** 🚧  
+🚧 **This GitHub repository is a temporary draft.** 🚧  
 
+---
 
 ## **📁 Repository Structure**  
 ├── Zero_shot/                     # Zero-Shot EEG classification setup  
