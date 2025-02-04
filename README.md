@@ -1,58 +1,113 @@
-This temporal repository contains two main directories: 'Zero_shot/', which implements the Zero-Shot EEG-based emotion classification model as described in 'Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning' (under review), and 'Fusion_bottleneck/', which explores feature fusion techniques to enhance multimodal emotion recognition.
 
-## Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning  
-**Overview**
-This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning".
-Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
+# **Multimodal EEG, Audio, and Vision for Emotion Recognition** (Temporary Draft)
 
-## Fusion Bottleneck paper
-**Overview**
-This repository also contains the implementation of...
+This repository contains two main directories:  
+- **`Zero_shot/`**: Implements the Zero-Shot EEG-based emotion classification model as described in *"Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning"* (under review).  
+- **`EAV_Fusion/`**: Explores feature fusion techniques to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
 
-## **📁 Repository Structure**  
-├── Zero_shot/                     # Contains the Zero-Shot EEG classification model  
-│   ├── Transformer_Audio.py       # Transformer model for audio modality  
-│   ├── Transformer_EEG.py         # Transformer model for EEG modality  
-│   ├── Transformer_Video.py       # Transformer model for video modality  
-│   ├── Zeroshot_setting.py        # Configuration and setup for zero-shot learning  
-│   ├── main_classwise.py          # Main script for class-wise evaluation  
-│   ├── main_classwise_visualization.py  # Visualization of class-wise results  
-│   ├── main.py                    # Main executable script for ZSL (runs the chosen settings)  
-│   ├── utils.py                    # Helper functions  
-│   ├── config.yaml                 # Model configurations  
-│   ├── results/                    # Stores model outputs and logs  
-├── Fusion_bottleneck/              # Implements feature fusion techniques for emotion recognition  
-├── pretrained_models/              # Pre-trained models for users to download and fine-tune  
-├── data_processing/                # Scripts for preprocessing the EAV (EEG-Audio-Vision) dataset  
-│   ├── EEG/                        # Contains EEG data files  
-│   │   ├── subject_01.pkl          # Example EEG data file  
-│   ├── Audio/                      # Contains Audio data files  
-│   ├── Vision/                      # Contains Video data files  
-├── requirements.txt                # List of dependencies  
-├── README.md                       # Project documentation  
-└── LICENSE                         # License information  
+## **Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning**  
+### **Overview**  
+This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
 
+## **Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion (AMBT)**  
+
+### **Overview**  
+This repository contains the official implementation of the **Adaptive Multimodal Bottleneck Transformer (AMBT)**, a novel architecture designed for efficient multimodal fusion of **EEG, Audio, and Vision** data in emotion recognition tasks. AMBT introduces **bottleneck tokens** to facilitate cross-modal information exchange, enhancing model performance while maintaining computational efficiency.  
+AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—**EEG, Audio, and Vision**—is processed by its own dedicated **Transformer model**, ensuring optimal feature extraction. Through **cross-modal learning**, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using **implicit contrastive learning**. Extensive experiments on the **EAV (EEG-Audio-Vision) benchmark dataset** demonstrate **state-of-the-art performance** in multimodal fusion.
+
+---
+
+## **📌 Dataset Description**  
+### **EAV: EEG-Audio-Video Dataset for Emotion Recognition in Conversational Contexts**  
+We introduce a multimodal emotion dataset comprising data from **30-channel electroencephalography (EEG), audio, and video recordings** from **42 participants**. Each participant engaged in a **cue-based conversation scenario**, eliciting **five distinct emotions**:  
+- **Neutral (N)**  
+- **Anger (A)**  
+- **Happiness (H)**  
+- **Sadness (S)**  
+- **Calmness (C)**  
+
+Participants engage in paired **listen/speak** sets with recordings of an experienced actor, seated in front of a **27-inch monitor** displaying visual stimuli.  
+
+The experiment is designed as a **pseudo-random class-iteration sequence**:  
+`[A, A, C, C, S, S, H, A, C, H, H, S, S, A, A, C, C, H, H, S]`.  
+
+Throughout the experiment, each participant contributed **200 interactions**, resulting in a cumulative total of **8,400 interactions** across all participants.  
+
+📄 For more details, refer to the dataset paper:  
+🔗 [https://www.nature.com/articles/s41597-024-03838-4](https://www.nature.com/articles/s41597-024-03838-4)  
+
+
+---
 
 ## **⚙️ Setup and Installation**  
-1. Downloading the Data:
-   
-  The EAV dataset original paper is "EAV: EEG-Audio-Video Dataset for Emotion Recognition in Conversational Contexts".
-  Follow this links 'https://github.com/nubcico/EAV' and 'https://zenodo.org/records/10205702' for further instructions to download the dataset. 
+### **1. Downloading the Data**  
 
-3. Running the Model:
-   
-  Install the required dependencies:
+Follow this link for instructions to download the dataset:  
+🔗 [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
 
-      pip install -r requirements.txt
-   
-  Execute the main script:
-  
-      python main.py
+### **2. Running the Model**  
 
-5. Updating Pretrained Models:
-   
-  To update the pretrained models, download them from this link and place them in the 'pretrained_models/' directory.
+Install the required dependencies:  
+```bash
+pip install -r requirements.txt
+```
 
-Citation:
+For **Zero-Shot Learning**, execute the main script:  
+```bash
+python Zero_shot/main.py
+```
 
-If you use this code and dataset, please cite this github 'https://github.com/minholee2087/EAV_lab'and EAV dataset 'https://github.com/nubcico/EAV' as well.
+For **EAV Fusion**, you can choose from two versions:  
+```bash
+python Fusion_bottleneck/AMBT_mean.py
+```
+or  
+```bash
+python Fusion_bottleneck/AMBT_concat.py
+```
+
+---
+
+
+## **📢 Citation**  
+If you use this code and dataset, please cite:  
+- This GitHub repository: [https://github.com/minholee2087/EAV_lab](https://github.com/minholee2087/EAV_lab)  
+- The **EAV dataset**: [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
+
+---
+
+### **⚠️ Note**  
+🚧 **This GitHub repository is a temporary draft and may be subject to changes.** 🚧  
+
+
+## **📁 Repository Structure**  
+├── Zero_shot/                     # Zero-Shot EEG classification setup  
+│   ├── Transformer_Audio.py       # Transformer model for processing audio modality  
+│   ├── Transformer_EEG.py         # Transformer model for processing EEG modality  
+│   ├── Transformer_Video.py       # Transformer model for processing video modality  
+│   ├── Zeroshot_setting.py        # Configuration and setup for zero-shot learning experiments  
+│   ├── main_classwise.py          # Script for evaluating zero-shot learning on a class-wise basis  
+│   ├── main_classwise_visualization.py  # Script for visualizing class-wise zero-shot results  
+│   ├── main.py                    # Main executable script for running zero-shot learning experiments  
+│   ├── utils.py                    # Utility functions for data processing and evaluation  
+│   ├── config.yaml                 # Configuration file containing model hyperparameters  
+│   ├── results/                    # Directory storing model outputs, logs, and evaluations  
+│
+├── Fusion_bottleneck/              # Adaptive Multimodal Bottleneck Transformer (AMBT) models  
+│   ├── Transformer_Audio_mean.py   # Transformer model for audio modality (AMBT-Mean)  
+│   ├── Transformer_EEG_mean.py     # Transformer model for EEG modality (AMBT-Mean)  
+│   ├── Transformer_Video_mean.py   # Transformer model for video modality (AMBT-Mean)  
+│   ├── Transformer_Audio_concat.py # Transformer model for audio modality (AMBT-Concat)  
+│   ├── Transformer_EEG_concat.py   # Transformer model for EEG modality (AMBT-Concat)  
+│   ├── Transformer_Video_concat.py # Transformer model for video modality (AMBT-Concat)  
+│   ├── AMBT_mean.py                # Implementation of AMBT-Mean fusion architecture  
+│   ├── AMBT_concat.py              # Implementation of AMBT-Concat fusion architecture  
+│
+├── pretrained_models/              # Directory for storing pre-trained model checkpoints  
+│
+├── data_processing/                # Scripts for preprocessing the EEG-Audio-Vision (EAV) dataset  
+│
+├── requirements.txt                # List of required dependencies for the project  
+├── README.md                       # Project documentation and usage instructions  
+└── LICENSE                         # License information for the repository  
+ 
