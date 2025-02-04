@@ -6,12 +6,11 @@ This repository contains two main directories:
 - **`EAV_Fusion/`**: Explores feature fusion techniques to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
 
 ## **Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning**  
-**Overview**  This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
+**Overview:**  This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
 
 ## **Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion (AMBT)**  
 
-**Overview**  This repository contains the official implementation of the **Adaptive Multimodal Bottleneck Transformer (AMBT)**, a novel architecture designed for efficient multimodal fusion of **EEG, Audio, and Vision** data in emotion recognition tasks. AMBT introduces **bottleneck tokens** to facilitate cross-modal information exchange, enhancing model performance while maintaining computational efficiency.  
-AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—**EEG, Audio, and Vision**—is processed by its own dedicated **Transformer model**, ensuring optimal feature extraction. Through **cross-modal learning**, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using **implicit contrastive learning**. Extensive experiments on the **EAV (EEG-Audio-Vision) benchmark dataset** demonstrate **state-of-the-art performance** in multimodal fusion.
+**Overview:**  This repository contains the official implementation of the Adaptive Multimodal Bottleneck Transformer (AMBT), a novel architecture designed for efficient multimodal fusion of EEG, Audio, and Vision data in emotion recognition tasks. AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—EEG, Audio, and Vision—is processed by its own dedicated Transformer model, ensuring optimal feature extraction. Through cross-modal learning, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using implicit contrastive learning. Extensive experiments on the EAV (EEG-Audio-Vision) benchmark dataset demonstrate state-of-the-art performance in multimodal fusion.
 
 ---
 
@@ -87,11 +86,10 @@ If you use this code and dataset, please cite:
 │   ├── main_classwise.py          # Script for evaluating zero-shot learning on a class-wise basis  
 │   ├── main_classwise_visualization.py  # Script for visualizing class-wise zero-shot results  
 │   ├── main.py                    # Main executable script for running zero-shot learning experiments  
-│   ├── utils.py                    # Utility functions for data processing and evaluation  
-│   ├── config.yaml                 # Configuration file containing model hyperparameters  
+│   ├── utils.py                   # Utility functions for data processing and evaluation  
+│   ├── config.yaml                # Configuration file containing model hyperparameters  
 │   ├── results/                    # Directory storing model outputs, logs, and evaluations  
 │
-|
 ├── Fusion_bottleneck/              # Adaptive Multimodal Bottleneck Transformer (AMBT) models  
 │   ├── Transformer_Audio_mean.py   # Transformer model for audio modality (AMBT-Mean)  
 │   ├── Transformer_EEG_mean.py     # Transformer model for EEG modality (AMBT-Mean)  
@@ -109,4 +107,4 @@ If you use this code and dataset, please cite:
 ├── requirements.txt                # List of required dependencies for the project  
 ├── README.md                       # Project documentation and usage instructions  
 └── LICENSE                         # License information for the repository  
- 
+
