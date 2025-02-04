@@ -27,7 +27,7 @@ This repository also contains the implementation of...
 │   ├── EEG/                        # Contains EEG data files  
 │   │   ├── subject_01.pkl          # Example EEG data file  
 │   ├── Audio/                      # Contains Audio data files  
-│   ├── Video/                      # Contains Video data files  
+│   ├── Vision/                      # Contains Video data files  
 ├── requirements.txt                # List of dependencies  
 ├── README.md                       # Project documentation  
 └── LICENSE                         # License information  
