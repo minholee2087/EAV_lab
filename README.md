@@ -89,7 +89,7 @@ If you use this code and dataset, please cite:
 │   ├── main.py                    # Main executable script for running zero-shot learning experiments  
 │   ├── utils.py                   # Utility functions for data processing and evaluation  
 │   ├── config.yaml                # Configuration file containing model hyperparameters  
-│   ├── results/                    # Directory storing model outputs, logs, and evaluations  
+│   ├── results                    # Directory storing model outputs, logs, and evaluations  
 │
 ├── Fusion_bottleneck/              # Adaptive Multimodal Bottleneck Transformer (AMBT) models  
 │   ├── Transformer_Audio_mean.py   # Transformer model for audio modality (AMBT-Mean)  
@@ -101,9 +101,9 @@ If you use this code and dataset, please cite:
 │   ├── AMBT_mean.py                # Implementation of AMBT-Mean fusion architecture  
 │   ├── AMBT_concat.py              # Implementation of AMBT-Concat fusion architecture  
 │
-├── pretrained_models/              # Directory for storing pre-trained model checkpoints  
+├── pretrained_models              # Directory for storing pre-trained model checkpoints  
 │
-├── data_processing/                # Scripts for preprocessing the EEG-Audio-Vision (EAV) dataset  
+├── data_processing                # Scripts for preprocessing the EEG-Audio-Vision (EAV) dataset  
 │
 ├── requirements.txt                # List of required dependencies for the project  
 ├── README.md                       # Project documentation and usage instructions  
