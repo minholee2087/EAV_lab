@@ -1,6 +1,5 @@
 from Transformer_Video import ViT_Encoder_Video
 from Transformer_Audio import ViT_Encoder, ast_feature_extract
-from Transformer_EEG import ShallowConvNet
 import pickle
 from torchvision import transforms
 import torch
@@ -116,7 +115,7 @@ def load_subject_data(directory, subject_idx, audio=True, vision=True, eeg=True)
         te_x_aud_ft = ast_feature_extract(te_x_aud).unsqueeze(1).to(device)
 
     if vision:
-        # Vision data
+        # Vision2 data
         vision_path = os.path.join(directory, "Vision", f"subject_{subject_idx:02d}_vis.pkl")
         with open(vision_path, 'rb') as f:
             vis_list = pickle.load(f)
@@ -217,13 +216,13 @@ def load_models(base_dir, subject_idx):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     audio_model_path = os.path.join(base_dir, "Audio", f"model_with_weights_audio_finetuned_{subject_idx}.pth")
-    state_dict_aud = torch.load(audio_model_path, map_location=torch.device('cpu'))
+    state_dict_aud = torch.load(audio_model_path, map_location=torch.device(device), weights_only=True)
     #state_dict_aud = torch.load(audio_model_path, map_location=torch.device(device))
     model_aud.load_state_dict(state_dict_aud)
-    model_aud = model_aud.cuda()
+    model_aud = model_aud.to(device)
     model_aud.eval()
 
-    # Vision 모델 복원
+    # Vision2 모델 복원
     model_vis = ViT_Encoder_Video(
         classifier=True,
         img_size=(224, 224),
@@ -233,28 +232,24 @@ def load_models(base_dir, subject_idx):
         embed_pos=True
     )
     vision_model_path = os.path.join(base_dir, "Vision2", f"model_with_weights_video_finetuned_{subject_idx}.pth")
-    state_dict_vis = torch.load(vision_model_path, map_location=torch.device('cpu'))
+    state_dict_vis = torch.load(vision_model_path, map_location=torch.device(device), weights_only=True)
+    #state_dict_vis = torch.load(vision_model_path, map_location=torch.device(device))
     model_vis.load_state_dict(state_dict_vis)
     #state_dict_vis['cls_token']
 
-    model_vis = model_vis.cuda()
+    model_vis = model_vis.to(device)
     model_vis.eval()
 
     # Fusion 모델 복원
-    model_av = FusionNN(input_dim=2 * 768, hidden_dim1=256, hidden_dim2=32, output_dim=5).cuda()
+    model_av = FusionNN(input_dim=2 * 768, hidden_dim1=256, hidden_dim2=32, output_dim=5).to(device)
     fusion_model_path = os.path.join(base_dir, "AudioVision", f"subject_{subject_idx:02d}_av_finetune_model.pth")
-    state_dict_av = torch.load(fusion_model_path, map_location=torch.device('cpu'))
+    state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device), weights_only=True)
+    #state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device))
     model_av.load_state_dict(state_dict_av)
-    model_av = model_av.cuda()
+    model_av = model_av.to(device)
     model_av.eval()
 
-    # eeg
-    model_eeg = ShallowConvNet(nb_classes=5, Chans=30, Samples=500, num_layers=6)
-    eeg_model_path = os.path.join(base_dir, "EEG", f"subject_{subject_idx:02d}_layers6_epochs300.pth")
-    state_dict_eeg = torch.load(eeg_model_path, map_location=torch.device('cpu'))
-    model_eeg.load_state_dict(state_dict_eeg)
-
-    return model_aud, model_vis, model_eeg, model_av
+    return model_aud, model_vis, model_av
 
 def predict_eeg(te_x_av, te_y_av, model_eeg, batch_size=32):
     model_eeg.eval()
@@ -282,7 +277,6 @@ def predict_eeg(te_x_av, te_y_av, model_eeg, batch_size=32):
     accuracy = correct / total
     print(accuracy)
     return accuracy
-
 
 def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label, tsne = True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -329,10 +323,10 @@ def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label,
     # Visualize using t-SNE
     if tsne:
         sne = TSNE(n_components=2, random_state=42)
-        tsne_features = tsne.fit_transform(fusion_intermediate.cpu().numpy())
+        tsne_features = tsne.fit_transform(fusion_intermediate.to(device).numpy())
 
         plt.figure(figsize=(10, 7))
-        scatter = plt.scatter(tsne_features[:, 0], tsne_features[:, 1], c=label.cpu().numpy(), cmap='viridis', alpha=0.8)
+        scatter = plt.scatter(tsne_features[:, 0], tsne_features[:, 1], c=label.to(device).numpy(), cmap='viridis', alpha=0.8)
         plt.colorbar(scatter, label='Class Labels')
         plt.title("t-SNE Visualization of Fusion Model's Intermediate Space (fc1)")
         plt.xlabel("t-SNE Dimension 1")
@@ -340,7 +334,6 @@ def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label,
         plt.show()
 
     return accuracy
-
 
 def contrastive(Data, Models, optimizer=None, epochs=15, batch_size=32, temperature=0.07, alpha=0.5, beta=0.5, gamma=0.5, freeze_epochs=2):
 
@@ -509,93 +502,10 @@ def contrastive(Data, Models, optimizer=None, epochs=15, batch_size=32, temperat
         print(f"Shared Space Test Accuracy: {100 * shared_accuracy:.2f}%")
         print(f"EEG Model Test Accuracy: {100 * eeg_accuracy:.2f}%")
 
-
     # Return updated EEG model
     return model_eeg
 
-class NTXentLoss(torch.nn.Module):
-    def __init__(self, temperature=0.5):
-        super(NTXentLoss, self).__init__()
-        self.temperature = temperature
-        self.criterion = torch.nn.CrossEntropyLoss()
-
-    def forward(self, z_i, z_j):
-        batch_size = z_i.size(0)
-        z = torch.cat([z_i, z_j], dim=0)
-        sim_matrix = torch.mm(z, z.t()) / self.temperature
-        sim_matrix = sim_matrix - torch.eye(2 * batch_size, device=z.device) * 1e9
-        labels = torch.cat([torch.arange(batch_size), torch.arange(batch_size)], dim=0).to(z.device)
-        labels = (labels.unsqueeze(1) == labels.unsqueeze(0)).float()
-        labels = labels - torch.eye(2 * batch_size, device=z.device)  # Remove self-similarity
-        labels = torch.argmax(labels, dim=1)  # Convert similarity mask to label indices
-        return self.criterion(sim_matrix, labels)
-
-class TripletLoss(torch.nn.Module):
-    def __init__(self, margin=1.0):
-        super(TripletLoss, self).__init__()
-        self.margin = margin
-        self.criterion = torch.nn.TripletMarginLoss(margin=margin)
-
-    def forward(self, anchor, positive, negative):
-        return self.criterion(anchor, positive, negative)
-
-def select_hard_negatives(embeddings, labels):
-    """
-    Selects hard negatives for each anchor based on embeddings and labels.
-    A hard negative is the closest embedding with a different label.
-
-    Args:
-        embeddings (torch.Tensor): Embedding vectors (B, D), where B is the batch size and D is the feature dimension.
-        labels (torch.Tensor): Corresponding labels (B,).
-
-    Returns:
-        torch.Tensor: Hard negatives for each embedding (B, D).
-    """
-    distances = torch.cdist(embeddings, embeddings)  # Pairwise distances (B, B)
-    negatives = []
-
-    for i, label in enumerate(labels):
-        # Find all indices with a different label
-        negative_indices = torch.where(labels != label)[0]
-
-        if len(negative_indices) > 0:
-            # Get distances to negatives and find the closest
-            negative_distances = distances[i, negative_indices]
-            hard_negative_idx = negative_indices[negative_distances.argmin()]  # Closest negative
-            negatives.append(embeddings[hard_negative_idx])
-        else:
-            # Fallback: Use a random negative if no valid negatives exist
-            random_idx = torch.randint(0, len(labels), (1,)).item()
-            while labels[random_idx] == label:
-                random_idx = torch.randint(0, len(labels), (1,)).item()
-            negatives.append(embeddings[random_idx])
-
-    return torch.stack(negatives)
-
-def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr=0.005, batch_size=32, eeg_model_freeze = "freeze", fusion_model_freeze = "freeze"):
-
-    def contrastive_loss2(embeddings, labels, temperature=0.5):
-        embeddings = FF.normalize(embeddings, p=2, dim=1)  # L2 normalization
-        similarity_matrix = torch.matmul(embeddings, embeddings.T) / temperature
-        labels_matrix = (labels.unsqueeze(1) == labels.unsqueeze(0)).float()
-        loss = FF.cross_entropy(similarity_matrix, labels_matrix)
-        return loss
-
-    def contrastive_loss(features_1, features_2, temperature=0.07):
-        # Normalize features
-        features_1 = FF.normalize(features_1, p=2, dim=1)
-        features_2 = FF.normalize(features_2, p=2, dim=1)
-
-        # Compute cosine similarity
-        logits = torch.mm(features_1, features_2.t()) / temperature
-        labels = torch.arange(features_1.size(0)).to(features_1.device)
-
-        # Cross entropy loss
-        loss = FF.cross_entropy(logits, labels)
-        return loss
-
-    def mse_loss(features_1, features_2):
-        return torch.mean((features_1 - features_2) ** 2)
+def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr=0.005, batch_size=32, eeg_model_freeze = "unfreeze", fusion_model_freeze = "freeze"):
 
     def info_nce_loss(features_1, features_2, temperature=0.07):
         # Normalize features
@@ -631,37 +541,6 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             class_features = features[class_mask]
             centroid = centroids[label.item()]
             total_loss += torch.sum((class_features - centroid) ** 2) / len(class_features)
-        return total_loss
-
-    def centroid_loss2(features, labels, centroids, class_counts):
-        total_loss = 0
-        for label in torch.unique(labels):
-            class_mask = labels == label
-            class_features = features[class_mask]
-            centroid = centroids[label.item()]
-            num_samples = class_counts[label.item()]
-            total_loss += (torch.sum((class_features - centroid) ** 2) / num_samples) * (1 / class_counts[label.item()])
-        return total_loss
-
-    # Triplet loss function (defined outside the loop)
-    def triplet_loss(anchor, positive, negative, margin=1.0):
-        pos_distance = FF.pairwise_distance(anchor, positive, p=2)
-        neg_distance = FF.pairwise_distance(anchor, negative, p=2)
-        loss = FF.relu(pos_distance - neg_distance + margin)
-        return loss.mean()
-
-    #kinda same acc for cent or lower
-    def margin_centroid_loss(features, labels, centroids, margin=0.5):
-        total_loss = 0
-        for label in torch.unique(labels):
-            class_mask = labels == label
-            class_features = features[class_mask]
-            centroid = centroids[label.item()]
-            dist = torch.norm(class_features - centroid, dim=-1)
-
-            # Apply margin
-            loss = torch.sum(torch.relu(dist - margin)) / len(class_features)
-            total_loss += loss
         return total_loss
 
     # Device configuration
@@ -707,12 +586,12 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
 
     # Create dataloaders
     train_dataset = TensorDataset(
-        torch.tensor(tr_x_aud), torch.tensor(tr_x_vis), torch.tensor(tr_x_eeg), torch.tensor(tr_y_eeg)
+        torch.clone(tr_x_aud).detach(), torch.clone(tr_x_vis).detach(), torch.clone(tr_x_eeg).detach(), torch.clone(tr_y_eeg).detach()
     )
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     test_dataset = TensorDataset(
-        torch.tensor(te_x_aud), torch.tensor(te_x_vis), torch.tensor(te_x_eeg), torch.tensor(te_y_eeg)
+        torch.clone(te_x_aud).detach(), torch.clone(te_x_vis).detach(), torch.clone(te_x_eeg).detach(), torch.clone(te_y_eeg).detach()
     )
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     class_sums = {}
@@ -731,7 +610,6 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
                 batch_x_eeg.to(device),
                 batch_y.to(device),
             )
-
             # Reset gradients
             optimizer.zero_grad()
             # Extract AV features
@@ -770,58 +648,28 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
                 label: class_sums[label] / class_counts[label]
                 for label in class_sums.keys()
             }
-            #print('class centr: ', class_centroids)
 
             # Extract EEG features
             eeg_features = model_eeg.feature(batch_x_eeg)
             eeg_shared, eeg_class = zero_shot_model.forward_eeg(eeg_features)
             av_logits = fusion_model.fc2(av_shared)  # Output logits for classification (shape: B, num_classes)
 
-            #############################################
-
             # Compute losses
             loss_classification_eeg = FF.cross_entropy(eeg_class, batch_y)
             loss_classification_av = FF.cross_entropy(av_logits, batch_y)
-
-            #loss_contrastive = contrastive_loss(av_shared, eeg_shared)  # Compare av_shared (fixed) and eeg_shared
-            #loss_contrastive = contrastive_loss2(av_shared, eeg_shared)
-            #loss_contrastive = info_nce_loss(eeg_shared, av_shared, temperature=0.07)
-            loss_contrastive = mse_loss(av_shared, eeg_shared)
-            #loss_fn = NTXentLoss(temperature=0.5)
-            #loss_contrastive = loss_fn(av_shared, eeg_shared)
-
-            #loss_fn = TripletLoss(margin=1.0)
-            #negative = torch.cat([eeg_shared[1:], eeg_shared[:1]], dim=0)  # Shift as an example for negatives
-            #anchor = av_shared  # Anchor embeddings (e.g., AV shared representation)
-            #positive = eeg_shared  # Positive embeddings (e.g., EEG shared representation)
-            # Select hard negatives
-            # negative = select_hard_negatives(eeg_shared, batch_y)  # Pass EEG embeddings and labels
-
-            # Compute triplet loss using hard negatives
-            #loss_contrastive = loss_fn(anchor, positive, negative)
-
-            #loss_centroid = centroid_loss2(eeg_shared, batch_y, class_centroids, class_counts)
-            #loss_contrastive = triplet_loss(av_shared, av_shared, av_shared)
-            # Usage in the training loop
-            loss_centroid = margin_centroid_loss(av_shared, batch_y, class_centroids)
+            loss_contrastive = info_nce_loss(eeg_shared, av_shared, temperature=0.07)
+            loss_centroid = centroid_loss(eeg_shared, batch_y, class_centroids)
 
             # Total loss
-            total_loss = loss_contrastive + loss_classification_eeg + loss_classification_av + loss_centroid  #+ # + loss_classification_av # av can be excluded
+            total_loss = loss_contrastive + loss_classification_eeg + loss_classification_av + loss_centroid
 
             # Backpropagation
             total_loss.backward()
             optimizer.step()
 
             total_loss_epoch += total_loss.item()
-            print("cont loss:", loss_contrastive)
-            print('loss_eeg:', loss_classification_eeg)
-            print('loss_cent:', loss_centroid)
-            print('loss_av:', loss_classification_av)
-
-            ##################################################
 
         # Evaluation loop
-
         zero_shot_model.eval()
         model_eeg.eval()
         # Initialize lists to store predictions for each method
@@ -878,10 +726,10 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
                     eeg_centroid_predicted.append(predicted_label)
 
                 # Store predictions and labels
-                all_av_predictions.extend(av_predicted.cpu().tolist())
-                all_eeg_orig_predictions.extend(eeg_orig_predicted.cpu().tolist())
+                all_av_predictions.extend(av_predicted.to(device).tolist())
+                all_eeg_orig_predictions.extend(eeg_orig_predicted.to(device).tolist())
                 all_eeg_centroid_predictions.extend(eeg_centroid_predicted)
-                all_labels.extend(batch_y.cpu().tolist())
+                all_labels.extend(batch_y.to(device).tolist())
 
         # Convert to tensors for consistent handling
         all_av_predictions = torch.tensor(all_av_predictions)
@@ -894,7 +742,6 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             f"EEG Accuracy: {(all_eeg_orig_predictions == all_labels).sum().item() / 120 * 100:.2f}%, "
             f"EEG Centroid-Based Accuracy: {(all_eeg_centroid_predictions == all_labels).sum().item() / 120 * 100:.2f}%"
         )
-
         # Return predictions and labels
     return all_av_predictions, all_eeg_orig_predictions, all_eeg_centroid_predictions, all_labels
 
@@ -963,8 +810,8 @@ def predict_zeroshot_e_av(Data, Models, model_zs):
             # Get shared AV features (fixed centroid)
             av_shared = fusion_model.fc1(combined_features)  # Shape: (B, shared_dim)
 
-            av_shared_features.append(av_shared.cpu())
-            av_shared_labels.append(batch_y.cpu())
+            av_shared_features.append(av_shared.to(device))
+            av_shared_labels.append(batch_y.to(device))
         av_shared_features = torch.cat(av_shared_features)  # Shape: (total_samples, shared_dim)
         av_shared_labels = torch.cat(av_shared_labels)  # Shape: (total_samples,)
 
@@ -1034,9 +881,3 @@ def prepare_zeroshot_data(Data, exclude_class = 0 ):
     return (tr_x_aud, tr_y_aud, te_x_aud, te_y_aud,
             tr_x_vis, tr_y_vis, te_x_vis, te_y_vis,
             tr_x_av, tr_y_av, te_x_eeg, te_y_eeg)
-
-
-
-#Data = load_subject_data(directory = r"D:\Dropbox\DATASETS\EAV\Input_images", subject_idx=2)
-#Models = load_models(base_dir = r"D:\Dropbox\DATASETS\EAV\Finetuned_models", subject_idx = 2)
-
