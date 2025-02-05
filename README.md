@@ -98,8 +98,8 @@ If you use this code and dataset, please cite:
 │   ├── AMBT_mean.py                # Implementation of AMBT-Mean fusion architecture  
 │   ├── AMBT_concat.py              # Implementation of AMBT-Concat fusion architecture  
 ├── pretrained_models              # Directory for storing pre-trained model checkpoints  
-│   ├── ast-finetuned-audioset     # Preprocessor configurations for audio (please download large files via link above
-│   ├── Finetuned_models         # Finetuned models for audio, video and audiovision data (please download large files via link above
+│   ├── ast-finetuned-audioset              # Preprocessor configurations for audio (please download large files via link above)  
+│   ├── Finetuned_models              # Finetuned models for audio, video and audiovision data (please download large files via link above)  
 ├── data_processing                # Scripts for preprocessing the EEG-Audio-Vision (EAV) dataset  
 ├── requirements.txt                # List of required dependencies for the project  
 ├── README.md                       # Project documentation and usage instructions  
