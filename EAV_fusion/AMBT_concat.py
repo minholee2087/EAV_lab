@@ -17,7 +17,7 @@ from torchaudio.transforms import Resample
 from transformers import ASTFeatureExtractor
 from Transformer_Video_concat import ViT_Encoder_Video
 from Transformer_Audio_concat import ViT_Encoder_Audio, ast_feature_extract
-from Transformer_EEG_concat import ShallowConvNet
+from Transformer_EEG_concat import EEG_Encoder
 import pickle
 
 import warnings
@@ -64,8 +64,8 @@ for sub in range(1,43):
     model_vid.load_state_dict(torch.load(model_path), strict=False)
     
     num_layers=4
-    model_eeg = ShallowConvNet(nb_classes=5, Chans=30, Samples=500, num_layers=num_layers)
-    path= os.path.join(r'EEG_finetuned_models', f'subject_{sub:02d}_layers4_epochs400.pth')
+    model_eeg = EEG_Encoder(nb_classes=5, Chans=30, Samples=500, num_layers=num_layers)
+    path= os.path.join(r'D:\.spyder-py3\EEG_finetuned_models', f'subject_{sub:02d}_layers4_epochs400.pth')
     model_eeg.load_state_dict(torch.load(path), strict=False)
     
     file_name = f"subject_{sub:02d}_vis.pkl"
@@ -229,13 +229,13 @@ for sub in range(1,43):
             return encoded
 
     
-    class MBT(nn.Module):
+    class AMBT(nn.Module):
         def __init__(self, mlp_dim, num_classes, num_layers, 
                      hidden_size, fusion_layer, 
                      representation_size=None, 
                      return_prelogits=False, return_preclassifier=False,
                      ):
-            super(MBT, self).__init__()
+            super(AMBT, self).__init__()
     
             self.mlp_dim = mlp_dim
             self.num_classes = num_classes
@@ -245,8 +245,6 @@ for sub in range(1,43):
             self.return_prelogits = return_prelogits
             self.return_preclassifier = return_preclassifier
     
-    
-            #AutoModelForImageClassification.from_pretrained(mod_path).vit.embeddings
     
             self.n_bottlenecks = 2
             self.bottleneck = nn.Parameter(torch.randn(1, self.n_bottlenecks*3, 256) * 0.02) # *3 because 3 modalities
@@ -334,10 +332,8 @@ for sub in range(1,43):
                     x_out[modality] = self.model_aud.head(x_out[modality])
             x_pool = 0 
             for modality in x_out: 
-                #x_out[modality] = self.output_projection[modality](x_out[modality]) 
                 x_pool += x_out[modality]
                 
-            #print(f"x shape before permute: {encoded['eeg'].shape}")
             
             x_out['eeg'] = self.model_eeg.forward_ending(encoded['eeg'])
             x_pool += x_out['eeg']
@@ -346,7 +342,7 @@ for sub in range(1,43):
                 return x_pool 
             return x_out 
         
-    mbt = MBT(
+    ambt = AMBT(
         mlp_dim=3072, num_classes=5, num_layers=12, 
         hidden_size=768, fusion_layer=fusion_layer, representation_size=256,
         return_prelogits=False, return_preclassifier=False
@@ -356,10 +352,10 @@ for sub in range(1,43):
     
     criterion = torch.nn.CrossEntropyLoss()
     
-    mbt = mbt.to(device)
+    ambt = ambt.to(device)
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
-        mbt = nn.DataParallel(mbt)
+        ambt = nn.DataParallel(ambt)
     
     
     modes=[True,False]
@@ -369,30 +365,30 @@ for sub in range(1,43):
         
 
         
-        for param in mbt.module.parameters():
+        for param in ambt.module.parameters():
             param.requires_grad = True
             
-        for param in mbt.module.encoder.parameters():
+        for param in ambt.module.encoder.parameters():
             param.requires_grad = False
-        for param in mbt.module.temporal_encoder_audio.parameters():
+        for param in ambt.module.temporal_encoder_audio.parameters():
             param.requires_grad = False
-        for param in mbt.module.temporal_encoder_rgb.parameters():
+        for param in ambt.module.temporal_encoder_rgb.parameters():
             param.requires_grad = False
-        for param in mbt.module.model_eeg.parameters():
+        for param in ambt.module.model_eeg.parameters():
             param.requires_grad = False
             
-        mbt.module.cls_token_aud.requires_grad = False
-        mbt.module.cls_token_vid.requires_grad = False
-        mbt.module.pos_embed_aud.requires_grad = False
-        mbt.module.pos_embed_vid.requires_grad = False
-        mbt.module.bottleneck.requires_grad=False
+        ambt.module.cls_token_aud.requires_grad = False
+        ambt.module.cls_token_vid.requires_grad = False
+        ambt.module.pos_embed_aud.requires_grad = False
+        ambt.module.pos_embed_vid.requires_grad = False
+        ambt.module.bottleneck.requires_grad=False
         
         
             
         if freeze:
             epochs = 5
             
-            optimizer = optim.Adam(mbt.parameters(), lr=5e-5)
+            optimizer = optim.Adam(ambt.parameters(), lr=5e-5)
             
             
         else:
@@ -402,23 +398,23 @@ for sub in range(1,43):
             modalities1 = ['rgb', 'spectrogram']
             for modality in modalities1: 
                 for layer_idx in range(8, 12):  # Layers 8 to 12
-                    layer = mbt.module.encoder.encoders[modality][layer_idx]
+                    layer = ambt.module.encoder.encoders[modality][layer_idx]
                     for param in layer.midsample.parameters():
                         param.requires_grad = True
                     for param in layer.endsample.parameters():
                         param.requires_grad = True
                         
             for layer_idx in range(0, 4):  # Layers 8 to 12
-                layer = mbt.module.encoder.encoders['eeg'][layer_idx]
+                layer = ambt.module.encoder.encoders['eeg'][layer_idx]
                 for param in layer.midsample.parameters():
                     param.requires_grad = True
                 for param in layer.endsample.parameters():
                     param.requires_grad = True
-            optimizer = optim.Adam(mbt.parameters(), lr=5e-5)
+            optimizer = optim.Adam(ambt.parameters(), lr=5e-5)
             
         
         for epoch in range(1, epochs+1): 
-            mbt.train()
+            ambt.train()
             train_correct, train_total = 0, 0
             running_loss = 0.0 
             
@@ -428,7 +424,7 @@ for sub in range(1,43):
                 
                 inputs = {k: v.float().to(device) for k, v in inputs.items()}
                 labels = labels.to(device)
-                outputs = mbt(inputs)
+                outputs = ambt(inputs)
                 if isinstance(outputs, dict):
                     ce_loss = []
                     for mod in outputs:
@@ -446,7 +442,7 @@ for sub in range(1,43):
                     #print(f'Epoch {epoch}, loss: {running_loss / 10:.4f}')
                     running_loss = 0 
         
-            mbt.eval()
+            ambt.eval()
             correct, total = 0, 0
             outputs_batch = []
             true_labels_batch = []
@@ -455,7 +451,7 @@ for sub in range(1,43):
                     inputs['rgb'] = inputs['rgb'].view(-1, 3, 224, 224)
                     inputs = {k: v.float().to(device) for k, v in inputs.items()}
                     labels = labels.to(device)
-                    outputs = mbt(inputs)
+                    outputs = ambt(inputs)
         
                     # Collect predictions and true labels for F1-score calculation
                     _, predicted = torch.max(outputs, dim=-1)
@@ -476,6 +472,6 @@ for sub in range(1,43):
                 f.write(f'Subject {sub} Epoch {epoch} freeze:{freeze} Testing Accuracy: {test_accuracy:.4f} F1-score: {f1:.4f} \n')
 
             if epoch >= 10 and epoch <= 18:
-                torch.save(mbt.module.state_dict(), f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_mbt_epoch{epoch}.pth')
+                torch.save(ambt.module.state_dict(), f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_ambt_epoch{epoch}.pth')
 
         
