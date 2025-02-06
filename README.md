@@ -1,16 +1,5 @@
-
-# **Multimodal EEG, Audio, and Vision for Emotion Recognition** (Temporary Draft)
-
-This repository contains two main directories:  
-- **`Zero_shot/`**: Implements the Zero-Shot EEG-based emotion classification model as described in *"Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning"* (under review).  
-- **`EAV_Fusion/`**: Apply feature fusion technique to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
-
-## **Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning**  
-**Overview:**  This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
-
-## **Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion (AMBT)**  
-
-**Overview:**  This repository contains the implementation of the Adaptive Multimodal Bottleneck Transformer (AMBT), a novel architecture designed for efficient multimodal fusion of EEG, Audio, and Vision data in emotion recognition tasks. AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—EEG, Audio, and Vision—is processed by its own dedicated Transformer model, ensuring optimal feature extraction. Through cross-modal learning, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using implicit contrastive learning. Extensive experiments on the EAV (EEG-Audio-Vision) benchmark dataset demonstrate state-of-the-art performance in multimodal fusion.
+### **⚠️ Note**  
+🚧 **This GitHub repository is temporary and will be merged into the main repository later.** 🚧  
 
 ---
 
@@ -26,10 +15,24 @@ A multimodal emotion dataset comprising data from 30-channel electroencephalogra
 Participants engage in paired listen/speak sets with recordings of an experienced actor.  
 Throughout the experiment, each participant contributed 200 interactions, resulting in a cumulative total of 8,400 interactions across all participants.  
 
-📄 For more details, refer to the dataset paper and its GitHub repository:  
-🔗 [https://www.nature.com/articles/s41597-024-03838-4](https://www.nature.com/articles/s41597-024-03838-4)  
+📄 For more details, refer to the dataset and GitHub repository:  
+🔗 [https://zenodo.org/records/10205702](https://zenodo.org/records/10205702)  
 🔗 [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
 
+---
+
+# **Multimodal EEG, Audio, and Vision for Emotion Recognition** (Temporary Draft)
+
+This repository contains two main directories:  
+- **`Zero_shot/`**: Implements the Zero-Shot EEG-based emotion classification model as described in *"Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning"* (under review).  
+- **`EAV_Fusion/`**: Apply feature fusion technique to enhance multimodal emotion recognition as described in *"Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion"* (under review).  
+
+## **Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning**  
+**Overview:**  This repository contains the implementation of our multimodal zero-shot learning (ZSL) framework for EEG-based emotion recognition, as presented in the paper (currently under review): "Multimodal Joint Representations of EEG and Audio-Vision for Zero-Shot Learning". Our approach integrates EEG, audio, and vision modalities to map data into a shared semantic embedding space using contrastive learning. The framework leverages a multimodal audio-vision transformer alongside a shallow EEG transformer to optimize both unimodal and multimodal performance.
+
+## **Adaptive Bottleneck Transformer for Multimodal EEG, Audio, and Vision Fusion (AMBT)**  
+
+**Overview:**  This repository contains the implementation of the Adaptive Multimodal Bottleneck Transformer (AMBT), a novel architecture designed for efficient multimodal fusion of EEG, Audio, and Vision data in emotion recognition tasks. AMBT includes two versions: **AMBT-Mean**, which applies mean-based fusion of bottleneck tokens for multimodal integration, and **AMBT-Concat**, which utilizes concatenation-based fusion. Each modality—EEG, Audio, and Vision—is processed by its own dedicated Transformer model, ensuring optimal feature extraction. Through cross-modal learning, AMBT maintains unimodal processing pipelines while enabling stronger modalities to extract meaningful signals from weaker ones using implicit contrastive learning. Extensive experiments on the EAV (EEG-Audio-Vision) benchmark dataset demonstrate state-of-the-art performance in multimodal fusion.
 
 ---
 
@@ -70,11 +73,6 @@ python Fusion_bottleneck/AMBT_concat.py
 If you use this code and dataset, please cite:  
 - This GitHub repository: [https://github.com/minholee2087/EAV_lab](https://github.com/minholee2087/EAV_lab)  
 - The **EAV dataset**: [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
-
----
-
-### **⚠️ Note**  
-🚧 **This GitHub repository is a temporary draft.** 🚧  
 
 ---
 
