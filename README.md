@@ -57,13 +57,9 @@ For **Zero-Shot Learning**, execute the main script:
 python Zero_shot/main.py
 ```
 
-For **EAV Fusion**, you can choose from two versions:  
+For **EAV Fusion**, you can run:  
 ```bash
-python Fusion_bottleneck/AMBT_mean.py
-```
-or  
-```bash
-python Fusion_bottleneck/AMBT_concat.py
+python EAV_fusion/training.py
 ```
 
 ---
