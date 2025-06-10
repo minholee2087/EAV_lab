@@ -17,9 +17,9 @@ from torchaudio.transforms import Resample
 from transformers import ASTFeatureExtractor
 #change concat to mean in following file names, if want mean version
 from model.AMBT_concat import AMBT
-from Transformer_Video_concat import ViT_Encoder_Video
-from Transformer_Audio_concat import ViT_Encoder_Audio, ast_feature_extract
-from Transformer_EEG_concat import EEG_Encoder
+from unimodal_models.Transformer_Video_concat import ViT_Encoder_Video
+from unimodal_models.Transformer_Audio_concat import ViT_Encoder_Audio, ast_feature_extract
+from unimodal_models.Transformer_EEG_concat import EEG_Encoder
 import pickle
 
 import warnings
