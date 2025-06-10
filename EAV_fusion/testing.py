@@ -73,7 +73,7 @@ if __name__ == "__main__":
             return_prelogits=False, return_preclassifier=False
         )
         
-        model_path = f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_mbt_epoch10.pth'
+        model_path = f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_ambt_epoch{epoch}.pth'
         ambt.load_state_dict(torch.load(model_path), strict=False)
         
         
