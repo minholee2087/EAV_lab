@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 from timm.layers import Mlp, use_fused_attn
+from Dataload_audio import DataLoadAudio
+from EAV_datasplit import EAVDataSplit
 import numpy as np
 from transformers import AutoImageProcessor
 
@@ -115,7 +117,6 @@ class Block(nn.Module):
             proj_drop: float = 0.,
             attn_drop: float = 0.,
             is_fusion:bool=False,
-            mid_layer=256,
             #init_values: Optional[float] = None,
             init_values=None,  # mhlee
             drop_path: float = 0.,
@@ -135,8 +136,8 @@ class Block(nn.Module):
             norm_layer=norm_layer,
         )
         if is_fusion:
-            self.midsample=nn.Linear(768, mid_layer, bias=False)
-            self.endsample = nn.Linear(mid_layer*3, 768, bias=False)
+            self.midsample=nn.Linear(768, 256)
+            self.endsample = nn.Linear(256, 768)
         self.ls1 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
@@ -222,7 +223,7 @@ class PatchEmbed(nn.Module):
 
 class ViT_Encoder_Video(nn.Module):
     def __init__(self, img_size=[224, 224], in_chans = 3, patch_size=16, stride = 16, embed_dim=768, depth=12,fusion_layer=8, num_heads=12, mlp_ratio=4.,
-                 classifier : bool = False, num_classes = 5, embed_eeg = False, embed_pos = True, mid_layer=256):
+                 classifier : bool = False, num_classes = 5, embed_eeg = False, embed_pos = True):
         super().__init__()
         # updated_mh
         #self.num_patches = (img_size // patch_size) ** 2
@@ -230,7 +231,7 @@ class ViT_Encoder_Video(nn.Module):
         self.embed_pos = embed_pos
         self.embed_dim = embed_dim
         self.num_classes = num_classes
-        
+
         num_patches_height = (img_size[0] - patch_size[0]) // stride + 1
         num_patches_width = (img_size[1] - patch_size[1]) // stride + 1
         self.total_patches = num_patches_height * num_patches_width
@@ -247,7 +248,7 @@ class ViT_Encoder_Video(nn.Module):
 
         self.blocks = nn.ModuleList([
             Block(dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, is_fusion=False) if i < fusion_layer
-            else Block(dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, is_fusion=True,mid_layer=mid_layer)
+            else Block(dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, is_fusion=True)
             for i in range(depth)
         ])
         self.norm = nn.LayerNorm(embed_dim)

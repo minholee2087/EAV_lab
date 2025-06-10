@@ -104,9 +104,9 @@ class TransformerLayer(nn.Module):
         return x
 
 
-class EEG_Encoder(nn.Module):
+class ShallowConvNet(nn.Module):
     def __init__(self, nb_classes, Chans=30, Samples=500, dropoutRate=0.5, num_layers=12):
-        super(EEG_Encoder, self).__init__()
+        super(ShallowConvNet, self).__init__()
 
         self.conv1_depth = 40
         self.eeg_ch = 30
