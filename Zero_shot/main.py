@@ -1,15 +1,31 @@
 from main_classwise import *
 import os
+import gdown
 
 # Please make sure to download full dataset from the following link:
 # https://zenodo.org/records/10205702
 
+# as github has file size limitations:
 # for 1 subject example run go with these links to get 'dataset_processing/', 'pretrained_models/', 'Finetuned_models/':
-# https://drive.google.com/drive/folders/13tGH7TJEtokCIZo1hQF0MgueHSN3fqwa?usp=sharing
+# https://drive.google.com/drive/folders/1gjaHu0Qy6UdBgF1JZ0X7aET30vRUE7qP?usp=sharing
 
 def download_data():
+    user_input = input("🔽 Do you want to start the download? (y/n): ").strip().lower()
+    if user_input != 'y':
+        print("❌ Download cancelled.")
+        return
+
+    '''save_path = input("📁 Enter folder path to save the data (leave empty for current directory): ").strip()
+    if save_path:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        os.chdir(save_path)'''
+
     print("\n⏳ Downloading data from Google Drive...")
-    os.system("gdown --folder https://drive.google.com/drive/folders/13tGH7TJEtokCIZo1hQF0MgueHSN3fqwa?usp=sharing")
+
+    url = "https://drive.google.com/drive/folders/1gjaHu0Qy6UdBgF1JZ0X7aET30vRUE7qP?usp=sharing"
+    gdown.download_folder(url, quiet=False, use_cookies=False)
+
     print("\n✅ Data download complete!")
 
 def run_all_classes():
@@ -33,7 +49,6 @@ def run_zeroshot():
         train_zero_shot(4)
     else:
         print("\n⚠️ Invalid input! Please restart and enter class label from 0 to 4.")
-
 
 if __name__ == "__main__":
     print("\n🌟 Welcome to the Temporal Repository. Here you can run an example of a chosen code. 🌟")

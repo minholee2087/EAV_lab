@@ -217,7 +217,6 @@ def load_models(base_dir, subject_idx):
 
     audio_model_path = os.path.join(base_dir, "Audio", f"model_with_weights_audio_finetuned_{subject_idx}.pth")
     state_dict_aud = torch.load(audio_model_path, map_location=torch.device(device), weights_only=True)
-    #state_dict_aud = torch.load(audio_model_path, map_location=torch.device(device))
     model_aud.load_state_dict(state_dict_aud)
     model_aud = model_aud.to(device)
     model_aud.eval()
@@ -233,7 +232,6 @@ def load_models(base_dir, subject_idx):
     )
     vision_model_path = os.path.join(base_dir, "Vision2", f"model_with_weights_video_finetuned_{subject_idx}.pth")
     state_dict_vis = torch.load(vision_model_path, map_location=torch.device(device), weights_only=True)
-    #state_dict_vis = torch.load(vision_model_path, map_location=torch.device(device))
     model_vis.load_state_dict(state_dict_vis)
     #state_dict_vis['cls_token']
 
@@ -244,7 +242,6 @@ def load_models(base_dir, subject_idx):
     model_av = FusionNN(input_dim=2 * 768, hidden_dim1=256, hidden_dim2=32, output_dim=5).to(device)
     fusion_model_path = os.path.join(base_dir, "AudioVision", f"subject_{subject_idx:02d}_av_finetune_model.pth")
     state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device), weights_only=True)
-    #state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device))
     model_av.load_state_dict(state_dict_av)
     model_av = model_av.to(device)
     model_av.eval()
