@@ -42,9 +42,6 @@ This repository contains two main directories:
 Follow this link for instructions to download the dataset:  
 🔗 [https://github.com/nubcico/EAV](https://github.com/nubcico/EAV)  
 
-Zero-Shot only: if you want to run an executable code on 1 subject, please follow this link (it also contains large files from **'pretrained_models\'**):  
-🔗 [https://drive.google.com/drive/folders/data_input](https://drive.google.com/drive/folders/13tGH7TJEtokCIZo1hQF0MgueHSN3fqwa?usp=sharing)
-
 ### **2. Running the Model**  
 
 Install the required dependencies:  
@@ -73,7 +70,12 @@ If you use this code and dataset, please cite:
 ---
 
 ## **📁 Repository Structure**  
-├── Zero_shot/                     # Zero-Shot EEG classification setup  
+├── Zero_shot/                     # Zero-Shot EEG classification setup
+│   data_input                     # Directory containing subject data, pretrained models and finetuned models
+│   ├── pretrained_models          # Directory for storing pre-trained model checkpoints  
+│   │   ├── ast-finetuned-audioset     # Preprocessor configurations for audio (please download large files via link above)  
+│   │   ├── Finetuned_models           # Finetuned models for audio, video and audiovision data (please download large files via link above)  
+│   ├── data_processing            # Subject data from EEG-Audio-Vision (EAV) dataset
 │   ├── Transformer_Audio.py       # Transformer model for processing audio modality  
 │   ├── Transformer_EEG.py         # Transformer model for processing EEG modality  
 │   ├── Transformer_Video.py       # Transformer model for processing video modality  
@@ -90,11 +92,7 @@ If you use this code and dataset, please cite:
 │   ├── Transformer_EEG_concat.py   # Transformer model for EEG modality (AMBT-Concat)  
 │   ├── Transformer_Video_concat.py # Transformer model for video modality (AMBT-Concat)  
 │   ├── AMBT_mean.py                # Implementation of AMBT-Mean fusion architecture  
-│   ├── AMBT_concat.py              # Implementation of AMBT-Concat fusion architecture  
-├── pretrained_models              # Directory for storing pre-trained model checkpoints  
-│   ├── ast-finetuned-audioset              # Preprocessor configurations for audio (please download large files via link above)  
-│   ├── Finetuned_models              # Finetuned models for audio, video and audiovision data (please download large files via link above)  
-├── data_processing                # Scripts for preprocessing the EEG-Audio-Vision (EAV) dataset  
+│   ├── AMBT_concat.py              # Implementation of AMBT-Concat fusion architecture    
 ├── requirements.txt                # List of required dependencies for the project  
 ├── README.md                       # Project documentation and usage instructions  
 └── LICENSE                         # License information for the repository  
