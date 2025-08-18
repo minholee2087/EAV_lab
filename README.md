@@ -70,12 +70,12 @@ If you use this code and dataset, please cite:
 ---
 
 ## **📁 Repository Structure**  
-├── Zero_shot/                     # Zero-Shot EEG classification setup
-│   data_input                     # Directory containing subject data, pretrained models and finetuned models
-│   ├── pretrained_models          # Directory for storing pre-trained model checkpoints  
-│   │   ├── ast-finetuned-audioset     # Preprocessor configurations for audio (please download large files via link above)  
-│   │   ├── Finetuned_models           # Finetuned models for audio, video and audiovision data (please download large files via link above)  
-│   ├── data_processing            # Subject data from EEG-Audio-Vision (EAV) dataset
+├── Zero_shot/                     # Zero-Shot EEG classification setup  
+│   ├── data_input                 # Directory containing subject data, pretrained models and finetuned models  
+│   │   ├── pretrained_models          # Directory for storing pre-trained model checkpoints  
+│   │   ├── ast-finetuned-audioset    # Preprocessor configurations for audio (please download large files via link above)  
+│   │   ├── Finetuned_models          # Finetuned models for audio, video and audiovision data (please download large files via link above)  
+│   ├── data_processing            # Subject data from EEG-Audio-Vision (EAV) dataset  
 │   ├── Transformer_Audio.py       # Transformer model for processing audio modality  
 │   ├── Transformer_EEG.py         # Transformer model for processing EEG modality  
 │   ├── Transformer_Video.py       # Transformer model for processing video modality  
