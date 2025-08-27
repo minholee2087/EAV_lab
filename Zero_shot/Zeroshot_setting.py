@@ -10,6 +10,7 @@ import torch.nn.functional as FF
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+from Cross_Modal_Bottleneck_Fusion import *
 
 class FusionNN(nn.Module):
     def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim, dropout=0.5):
@@ -239,11 +240,13 @@ def load_models(base_dir, subject_idx):
     model_vis.eval()
 
     # Fusion 모델 복원
-    model_av = FusionNN(input_dim=2 * 768, hidden_dim1=256, hidden_dim2=32, output_dim=5).to(device)
-    fusion_model_path = os.path.join(base_dir, "AudioVision", f"subject_{subject_idx:02d}_av_finetune_model.pth")
-    state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device), weights_only=True)
-    model_av.load_state_dict(state_dict_av)
-    model_av = model_av.to(device)
+    #model_av = FusionNN(input_dim=2 * 768, hidden_dim1=256, hidden_dim2=32, output_dim=5).to(device)
+    #fusion_model_path = os.path.join(base_dir, "AudioVision", f"subject_{subject_idx:02d}_av_finetune_model.pth")
+    #state_dict_av = torch.load(fusion_model_path, map_location=torch.device(device), weights_only=True)
+    #model_av.load_state_dict(state_dict_av)
+    #model_av = model_av.to(device)
+    fusion_model_path = os.path.join(base_dir, "AV_Bottleneck", f"model_av_crossbottle_subj_{subject_idx}.pth")
+    model_av = torch.load(fusion_model_path, map_location=device, weights_only=False)
     model_av.eval()
 
     return model_aud, model_vis, model_av
@@ -275,7 +278,7 @@ def predict_eeg(te_x_av, te_y_av, model_eeg, batch_size=32):
     print(accuracy)
     return accuracy
 
-def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label, tsne = True):
+def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label, tsne=True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Move models to the appropriate device
@@ -289,27 +292,12 @@ def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label,
     fusion_model.eval()
 
     with torch.no_grad():
-        # Extract features from vision data
-        B, F, C, H, W = te_x_vis.shape
-        vis_features = []
-        for b in range(B):  # Process each batch separately
-            frame_outputs = model_vis.feature(te_x_vis[b, :, :, :, :])  # Shape: (F, num_tokens, feature_dim)
-            frame_class_tokens = frame_outputs[:, 0, :]  # Extract class token for all frames
-            averaged_features = frame_class_tokens.mean(dim=0)  # Average across frames
-            vis_features.append(averaged_features)
-        vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)
+        # Prepare audio input (add channel dimension if needed)
+        if te_x_aud_ft.dim() == 3:  # (B, H, W) -> need (B, C, H, W)
+            te_x_aud_ft = te_x_aud_ft.unsqueeze(1)  # Add channel dimension
 
-        # Extract features from audio data
-        aud_features = model_aud.feature(te_x_aud_ft)[:, 0, :]  # Shape: (B, feature_dim)
-
-        # Concatenate features
-        combined_features = torch.cat((vis_features, aud_features), dim=1)  # Shape: (B, combined_feature_dim)
-
-        # Extract intermediate features (fc1) from the fusion model
-        fusion_intermediate = fusion_model.fc1(combined_features)  # Shape: (B, intermediate_dim)
-
-        # Pass through the rest of the model for final prediction
-        predictions = fusion_model(combined_features)  # Shape: (B, num_classes)
+        # Get predictions from fusion model
+        predictions, proj_av, audio_rep, video_rep = fusion_model(te_x_aud_ft, te_x_vis)
 
         # Get predicted classes
         predicted_classes = torch.argmax(predictions, dim=1)  # Shape: (B,)
@@ -319,188 +307,22 @@ def predict_av(te_x_vis, te_x_aud_ft, model_vis, model_aud, fusion_model, label,
 
     # Visualize using t-SNE
     if tsne:
+        # Use the fused representations for visualization
+        fused_representations = torch.cat([audio_rep, video_rep], dim=1)  # (B, 1536)
+
         sne = TSNE(n_components=2, random_state=42)
-        tsne_features = tsne.fit_transform(fusion_intermediate.to(device).numpy())
+        tsne_features = sne.fit_transform(fused_representations.cpu().numpy())
 
         plt.figure(figsize=(10, 7))
-        scatter = plt.scatter(tsne_features[:, 0], tsne_features[:, 1], c=label.to(device).numpy(), cmap='viridis', alpha=0.8)
+        scatter = plt.scatter(tsne_features[:, 0], tsne_features[:, 1],
+                              c=label.cpu().numpy(), cmap='viridis', alpha=0.8)
         plt.colorbar(scatter, label='Class Labels')
-        plt.title("t-SNE Visualization of Fusion Model's Intermediate Space (fc1)")
+        plt.title("t-SNE Visualization of Cross-Modal Bottleneck Fusion Representations")
         plt.xlabel("t-SNE Dimension 1")
         plt.ylabel("t-SNE Dimension 2")
         plt.show()
 
     return accuracy
-
-def contrastive(Data, Models, optimizer=None, epochs=15, batch_size=32, temperature=0.07, alpha=0.5, beta=0.5, gamma=0.5, freeze_epochs=2):
-
-    def contrastive_loss(features_1, features_2, temperature=0.07):
-        # Normalize features
-        features_1 = FF.normalize(features_1, p=2, dim=1)
-        features_2 = FF.normalize(features_2, p=2, dim=1)
-
-        # Compute cosine similarity
-        logits = torch.mm(features_1, features_2.t()) / temperature
-        labels = torch.arange(features_1.size(0)).to(features_1.device)
-
-        # Cross entropy loss
-        loss = FF.cross_entropy(logits, labels)
-        return loss
-
-    # Device configuration
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Unpack data and models
-    tr_x_aud, tr_y_aud, te_x_aud, te_y_aud, tr_x_vis, tr_y_vis, te_x_vis, te_y_vis, tr_x_eeg, tr_y_eeg, te_x_eeg, te_y_eeg = Data
-    model_aud, model_vis, model_eeg, fusion_model = Models
-
-    # Move models to device
-    model_vis = model_vis.to(device)
-    model_aud = model_aud.to(device)
-    model_eeg = model_eeg.to(device)
-    fusion_model = fusion_model.to(device)
-
-    # Freeze audio, vision, and fusion models
-    for param in model_vis.parameters():
-        param.requires_grad = False
-    for param in model_aud.parameters():
-        param.requires_grad = False
-    for param in fusion_model.parameters():
-        param.requires_grad = False
-
-    # Add shared layers to both models
-    shared_layer = nn.Linear(256, 256).to(device)  # Common shared space
-    eeg_projection_layer = nn.Linear(2600, 256).to(device)  # Map EEG features to 256 dimensions
-    shared_to_class = nn.Linear(256, 5).to(device)  # Classification layer for shared space (5 classes)
-
-    # Activation function
-    activation_fn = nn.ReLU()
-
-    # Optimizer
-    if optimizer is None:
-        optimizer = torch.optim.Adam(
-            list(shared_layer.parameters()) +
-            list(eeg_projection_layer.parameters()) +
-            list(shared_to_class.parameters()), lr=0.001
-        )
-
-    # Create dataloaders
-    train_dataset = TensorDataset(
-        torch.tensor(tr_x_aud), torch.tensor(tr_x_vis), torch.tensor(tr_x_eeg), torch.tensor(tr_y_eeg)
-    )
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-    test_dataset = TensorDataset(
-        torch.tensor(te_x_aud), torch.tensor(te_x_vis), torch.tensor(te_x_eeg), torch.tensor(te_y_eeg)
-    )
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    # Training loop
-    for epoch in range(epochs):
-        model_vis.eval()
-        model_aud.eval()
-        fusion_model.eval()
-
-        # Freeze/unfreeze EEG model based on epoch
-        if epoch < freeze_epochs:
-            for param in model_eeg.parameters():
-                param.requires_grad = False
-        else:
-            for param in model_eeg.parameters():
-                param.requires_grad = True
-            # Add EEG parameters to optimizer after unfreezing
-            if epoch == freeze_epochs:
-                optimizer.add_param_group({"params": model_eeg.parameters()})
-
-        model_eeg.train()
-
-        total_loss_epoch = 0
-        for batch in train_loader:
-            batch_x_aud, batch_x_vis, batch_x_eeg, batch_y = batch
-            batch_x_aud, batch_x_vis, batch_x_eeg, batch_y = (
-                batch_x_aud.to(device),
-                batch_x_vis.to(device),
-                batch_x_eeg.to(device),
-                batch_y.to(device),
-            )
-
-            # Reset gradients
-            optimizer.zero_grad()
-
-            # Extract AV features
-            B, _, C, H, W = batch_x_vis.shape
-            vis_features = []
-            for b in range(B):
-                frame_outputs = model_vis.feature(batch_x_vis[b])  # Shape: (F, num_tokens, feature_dim)
-                frame_class_tokens = frame_outputs[:, 0, :]
-                averaged_features = frame_class_tokens.mean(dim=0)  # Average across frames
-                vis_features.append(averaged_features)
-            vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)
-            aud_features = model_aud.feature(batch_x_aud)[:, 0, :]
-            combined_features_av = torch.cat((vis_features, aud_features), dim=1)
-
-            # Pass AV features through fusion model and shared layer
-            fusion_intermediate = fusion_model.fc1(combined_features_av)
-            fusion_shared_output = activation_fn(shared_layer(fusion_intermediate))
-
-            # Pass EEG features through projection and shared layer
-            eeg_projected = activation_fn(eeg_projection_layer(model_eeg.feature(batch_x_eeg)))
-            eeg_shared_output = activation_fn(shared_layer(eeg_projected))
-
-            # Classification in shared space
-            shared_class_output = shared_to_class(eeg_shared_output)
-            loss_classification_shared = FF.cross_entropy(shared_class_output, batch_y)
-
-            # Contrastive Loss
-            loss_contrastive = contrastive_loss(fusion_shared_output, eeg_shared_output)
-
-            # EEG-specific classification loss
-            eeg_classification_output = model_eeg(batch_x_eeg)
-            loss_classification_eeg = FF.cross_entropy(eeg_classification_output, batch_y)
-
-            # Total loss
-            total_loss = loss_classification_shared + loss_contrastive + alpha * loss_classification_eeg
-
-            # Backpropagation
-            total_loss.backward()
-            optimizer.step()
-
-            total_loss_epoch += total_loss.item()
-
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss_epoch:.4f}")
-
-        # Evaluation loop
-        model_eeg.eval()
-        shared_correct = 0
-        eeg_correct = 0
-        total = 0
-
-        with torch.no_grad():
-            for batch_x_aud, batch_x_vis, batch_x_eeg, batch_y in test_loader:
-                batch_x_eeg, batch_y = batch_x_eeg.to(device), batch_y.to(device)
-
-                # Shared space accuracy
-                shared_outputs = shared_to_class(
-                    activation_fn(shared_layer(eeg_projection_layer(model_eeg.feature(batch_x_eeg))))
-                )
-                _, shared_predicted = torch.max(shared_outputs.data, 1)
-                shared_correct += (shared_predicted == batch_y).sum().item()
-
-                # EEG model's original softmax accuracy
-                eeg_outputs = model_eeg(batch_x_eeg)
-                _, eeg_predicted = torch.max(eeg_outputs.data, 1)
-                eeg_correct += (eeg_predicted == batch_y).sum().item()
-
-                total += batch_y.size(0)
-
-        shared_accuracy = shared_correct / total
-        eeg_accuracy = eeg_correct / total
-
-        print(f"Shared Space Test Accuracy: {100 * shared_accuracy:.2f}%")
-        print(f"EEG Model Test Accuracy: {100 * eeg_accuracy:.2f}%")
-
-    # Return updated EEG model
-    return model_eeg
 
 def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr=0.005, batch_size=32, eeg_model_freeze = "unfreeze", fusion_model_freeze = "freeze"):
 
@@ -610,20 +432,33 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             # Reset gradients
             optimizer.zero_grad()
             # Extract AV features
-            B, _, C, H, W = batch_x_vis.shape
+            '''B, _, C, H, W = batch_x_vis.shape
             vis_features = []
             for b in range(B):
                 frame_outputs = model_vis.feature(batch_x_vis[b])  # Shape: (F, num_tokens, feature_dim)
                 frame_class_tokens = frame_outputs[:, 0, :]
                 averaged_features = frame_class_tokens.mean(dim=0)  # Average across frames
                 vis_features.append(averaged_features)
-            vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)
+            vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)'''
+
+            # Extract AV features using CrossModalBottleneckFusion
+            # Prepare audio input (add channel dimension if needed)
+            if batch_x_aud.dim() == 3:  # (B, H, W) -> need (B, C, H, W)
+                batch_x_aud_reshaped = batch_x_aud.unsqueeze(1)
+            else:
+                batch_x_aud_reshaped = batch_x_aud
 
             # Extract audio features
-            aud_features = model_aud.feature(batch_x_aud)[:, 0, :]  # Shape: (B, feature_dim)
+            '''aud_features = model_aud.feature(batch_x_aud)[:, 0, :]  # Shape: (B, feature_dim)
             combined_features_av = torch.cat((vis_features, aud_features), dim=1)  # Concatenate AV features
             # Pass AV features through fusion model to get shared space
-            av_shared = fusion_model.fc1(combined_features_av)  # Intermediate AV shared representation (fixed)
+            av_shared = fusion_model.fc1(combined_features_av)  # Intermediate AV shared representation (fixed)'''
+
+            # Get AV representations from fusion model
+            with torch.no_grad():  # Freeze fusion model
+                av_logits, proj_av, audio_rep, video_rep = fusion_model(batch_x_aud_reshaped, batch_x_vis)
+                # Use the projected features (256 dim) instead of concatenating
+                av_shared = proj_av  # This is already (B, 256)
 
             # Update centroids dynamically
             # Accumulative centroid updates
@@ -649,7 +484,7 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
             # Extract EEG features
             eeg_features = model_eeg.feature(batch_x_eeg)
             eeg_shared, eeg_class = zero_shot_model.forward_eeg(eeg_features)
-            av_logits = fusion_model.fc2(av_shared)  # Output logits for classification (shape: B, num_classes)
+            #av_logits = fusion_model.fc2(av_shared)  # Output logits for classification (shape: B, num_classes)
 
             # Compute losses
             loss_classification_eeg = FF.cross_entropy(eeg_class, batch_y)
@@ -686,28 +521,37 @@ def zeroshot_training(Data, Models, ZeroShotModel, optimizer=None, epochs=15, lr
                 )
 
                 # Extract vision features
-                B, F, C, H, W = batch_x_vis.shape
+                '''B, F, C, H, W = batch_x_vis.shape
                 vis_features = []
                 for b in range(B):  # Process each batch separately
                     frame_outputs = model_vis.feature(batch_x_vis[b])  # Shape: (F, num_tokens, feature_dim)
                     frame_class_tokens = frame_outputs[:, 0, :]  # Extract class token for all frames
                     averaged_features = frame_class_tokens.mean(dim=0)  # Average across frames
                     vis_features.append(averaged_features)
-                vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)
+                vis_features = torch.stack(vis_features)  # Shape: (B, feature_dim)'''
+                # Prepare audio input for fusion model
+                if batch_x_aud.dim() == 3:  # (B, H, W) -> need (B, C, H, W)
+                    batch_x_aud_reshaped = batch_x_aud.unsqueeze(1)
+                else:
+                    batch_x_aud_reshaped = batch_x_aud
 
                 # Extract audio features
-                aud_features = model_aud.feature(batch_x_aud)[:, 0, :]  # Shape: (B, feature_dim)
+                '''aud_features = model_aud.feature(batch_x_aud)[:, 0, :]  # Shape: (B, feature_dim)
                 combined_features = torch.cat((vis_features, aud_features), dim=1)  # Shape: (B, combined_feature_dim)
 
                 # Get shared AV features (fixed)
-                av_shared = fusion_model(combined_features)
+                av_shared = fusion_model(combined_features)'''
+                # Get AV predictions from fusion model (use the correct input format)
+                av_logits, proj_av, audio_rep, video_rep = fusion_model(batch_x_aud_reshaped, batch_x_vis)
 
                 # Extract EEG features and pass through ZeroShotModel
                 eeg_features = model_eeg.feature(batch_x_eeg)
                 eeg_shared, eeg_class = zero_shot_model.forward_eeg(eeg_features)
 
                 # Classification using shared space
-                _, av_predicted = torch.max(av_shared, dim=1)
+                '''_, av_predicted = torch.max(av_shared, dim=1)'''
+                # Use the logits for classification
+                _, av_predicted = torch.max(av_logits, dim=1)
                 _, eeg_orig_predicted = torch.max(model_eeg(batch_x_eeg)[0], dim=1)
 
                 # Centroid-based classification for EEG
