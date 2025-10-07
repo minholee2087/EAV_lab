@@ -80,7 +80,7 @@ class CLUBCritic(nn.Module):
 
 
 
-class FactorCLSUP(nn.Module):
+class FACL(nn.Module):
     def __init__(self, x1_dim, x2_dim, y_dim, hidden_dim=128, embed_dim=64,
                  layers=1, activation="relu", lr=1e-4, alpha=1e-4, temperature=0.1):
         super().__init__()
@@ -257,9 +257,9 @@ class AMBT_FACL(nn.Module):
         self.temporal_encoder_audio = model_aud.patch_embed
         self.temporal_encoder_rgb = model_vid.patch_embed
         
-        self.lossav= FactorCLSUP(x1_dim=768, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
-        self.lossev= FactorCLSUP(x1_dim=2600, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
-        self.lossae= FactorCLSUP(x1_dim=768, x2_dim=2600, y_dim=5, hidden_dim=256, embed_dim=768)
+        self.lossav= FACL(x1_dim=768, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
+        self.lossev= FACL(x1_dim=2600, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
+        self.lossae= FACL(x1_dim=768, x2_dim=2600, y_dim=5, hidden_dim=256, embed_dim=768)
 
 
     def forward(self, x, y):
