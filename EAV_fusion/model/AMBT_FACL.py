@@ -1,7 +1,8 @@
 import torch 
+import numpy as np 
 from torch.utils.data import DataLoader, Dataset
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -30,6 +31,88 @@ def prepare_dataloader(x, y, batch_size, shuffle=False):
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader
 
+
+
+
+
+def mlp(dim, hidden_dim, output_dim, layers=1, activation="relu"):
+    act_fn = {"relu": nn.ReLU, "tanh": nn.Tanh}[activation]
+    seq = [nn.Linear(dim, hidden_dim), act_fn()]
+    for _ in range(layers - 1):
+        seq += [nn.Linear(hidden_dim, hidden_dim), act_fn()]
+    seq.append(nn.Linear(hidden_dim, output_dim))
+    return nn.Sequential(*seq)
+
+
+class InfoNCECritic(nn.Module):
+    def __init__(self, in_dim, hidden_dim, layers=1, activation="relu", temperature=0.1):
+        super().__init__()
+        self.scorer = mlp(in_dim, hidden_dim, 1, layers, activation)
+        self.temperature = temperature
+
+    def forward(self, x, y):
+        n = y.size(0)
+        x_tile = x.unsqueeze(0).expand(n, -1, -1)
+        y_tile = y.unsqueeze(1).expand(-1, n, -1)
+
+        pos = self.scorer(torch.cat([x, y], dim=-1)) / self.temperature
+        all_pairs = self.scorer(torch.cat([x_tile, y_tile], dim=-1)) / self.temperature
+
+        lower_bound = pos.mean() - (all_pairs.logsumexp(dim=1).mean() - np.log(n))
+        return -lower_bound
+
+
+class CLUBCritic(nn.Module):
+    def __init__(self, in_dim, hidden_dim, layers=1, activation="relu", temperature=0.1):
+        super().__init__()
+        self.scorer = mlp(in_dim, hidden_dim, 1, layers, activation)
+        self.temperature = temperature
+
+    def forward(self, x, y):
+        n = y.size(0)
+        x_tile = x.unsqueeze(0).expand(n, -1, -1)
+        y_tile = y.unsqueeze(1).expand(-1, n, -1)
+
+        pos = self.scorer(torch.cat([x, y], dim=-1)) / self.temperature
+        neg = self.scorer(torch.cat([x_tile, y_tile], dim=-1)) / self.temperature
+
+        return pos.mean() - neg.mean()
+
+
+
+class FactorCLSUP(nn.Module):
+    def __init__(self, x1_dim, x2_dim, y_dim, hidden_dim=128, embed_dim=64,
+                 layers=1, activation="relu", lr=1e-4, alpha=1e-4, temperature=0.1):
+        super().__init__()
+        self.y_dim = y_dim
+        self.lr = lr
+        self.alpha = alpha
+
+        # Encoders
+        self.enc_x1 = mlp(x1_dim, hidden_dim, embed_dim, layers, activation)
+        self.enc_x2 = mlp(x2_dim, hidden_dim, embed_dim, layers, activation)
+
+        # Critics
+        self.infonce = InfoNCECritic(embed_dim * 2, hidden_dim, layers, activation, temperature)
+        self.club = CLUBCritic(embed_dim * 2 + y_dim, hidden_dim, layers, activation, temperature)
+
+    def ohe(self, y):
+        N = y.size(0)
+        y_ohe = torch.zeros(N, self.y_dim, device=y.device)
+        y_ohe[torch.arange(N), y.view(-1).long()] = 1
+        return y_ohe
+
+    def forward(self, x1, x2, y):
+        # Normalize embeddings
+        x1_embed = F.normalize(self.enc_x1(x1), dim=-1)
+        x2_embed = F.normalize(self.enc_x2(x2), dim=-1)
+        y_ohe = self.ohe(y)
+
+        loss_uncond = self.infonce(x1_embed, x2_embed)
+        loss_cond = self.club(torch.cat([x1_embed, y_ohe], dim=-1), x2_embed)
+
+        # Downweight contrastive loss
+        return self.alpha * (loss_uncond + loss_cond)
 
 
 
@@ -138,11 +221,10 @@ class TransformerEncoder(nn.Module):
             return encoded
 
 
-class AMBT(nn.Module):
+class AMBT_FACL(nn.Module):
     def __init__(self, mlp_dim, num_classes, num_layers, 
-                 hidden_size, fusion_layer, model_eeg,model_aud,model_vid
-                 ):
-        super(AMBT, self).__init__()
+                 hidden_size, fusion_layer, model_eeg,model_aud,model_vid):
+        super(AMBT_FACL, self).__init__()
 
         self.mlp_dim = mlp_dim
         self.num_classes = num_classes
@@ -174,9 +256,13 @@ class AMBT(nn.Module):
         self.pos_embed_vid = torch.load('D:\.spyder-py3\position_embeddings.pth')
         self.temporal_encoder_audio = model_aud.patch_embed
         self.temporal_encoder_rgb = model_vid.patch_embed
+        
+        self.lossav= FactorCLSUP(x1_dim=768, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
+        self.lossev= FactorCLSUP(x1_dim=2600, x2_dim=768, y_dim=5, hidden_dim=256, embed_dim=768)
+        self.lossae= FactorCLSUP(x1_dim=768, x2_dim=2600, y_dim=5, hidden_dim=256, embed_dim=768)
 
 
-    def forward(self, x):
+    def forward(self, x, y):
         
 
         
@@ -219,20 +305,32 @@ class AMBT(nn.Module):
         
         # now add cls token 
         encoded = self.encoder(x, bottleneck=bottleneck_expanded)
-        
+
         x_out = {}
 
         for modality in modalities: 
             if modality == 'rgb':
                 batch_size, _, _ = encoded['spectrogram'].size()
                 cls_tok = encoded[modality][:, 0]
+                vid_feat=cls_tok.view(batch_size, 25, -1)
+                vid_feat = vid_feat.mean(dim=1)
                 cls_tok=self.model_vid.head(cls_tok)
                 cls_tok = cls_tok.view(batch_size, 25, -1) #(2,25,5)
                 features = cls_tok.mean(dim=1)
                 x_out[modality] = features
             if modality == 'spectrogram':
                 x_out[modality] = encoded[modality][:, 0]
+                aud_feat = x_out[modality]
                 x_out[modality] = self.model_aud.head(x_out[modality])
+
+        eeg_feat=self.model_eeg.feature_ending(encoded['eeg'])
+        
+        L11= self.lossav.forward(aud_feat,vid_feat,y)
+        L21= self.lossev.forward(eeg_feat,vid_feat,y)
+        L31= self.lossae.forward(aud_feat,eeg_feat,y)
+        
+        loss_contr=(0.7*(L11)+0.2*(L21)+0.1*(L31))
+        
         x_pool = 0 
         for modality in x_out: 
             x_pool += x_out[modality]
@@ -246,6 +344,6 @@ class AMBT(nn.Module):
         if not self.training: 
             return x_pool 
         
-        return x_out 
+        return x_out, loss_contr
     
     

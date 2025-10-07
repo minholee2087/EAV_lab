@@ -165,5 +165,18 @@ class EEG_Encoder(nn.Module):
         x = self.fc(x)
 
         return x
+    def feature_ending(self, x):#we take the feature map of the eeg encoded after 4 layers and put it in
+        
+        x = x.permute(0, 2, 1).unsqueeze(2)
+        x = self.batchnorm(x)
+        x = torch.square(x)
+        x = self.pool(x)
+        x = torch.log(torch.clamp(x, min=1e-7, max=10000))
+
+        x = x.squeeze(2)
+        x = self.dropout(x)
+        x = torch.flatten(x, 1)
+
+        return x
 
             

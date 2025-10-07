@@ -1,30 +1,13 @@
 import pickle
 import os
 import torch 
-import os
-import numpy as np 
-import pandas as pd
-from transformers import AutoFeatureExtractor, ASTForAudioClassification
-
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data import TensorDataset, DataLoader
-import torch.nn as nn
-import torch.optim as optim
-
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import AutoImageProcessor, AutoModelForImageClassification
-import torchaudio
-from transformers import AutoModelForAudioClassification
-from torchaudio.transforms import Resample
-from transformers import ASTFeatureExtractor
-import pickle
-
+from transformers import AutoImageProcessor
 import warnings
 warnings.filterwarnings("ignore")
 from sklearn.metrics import f1_score
-import sys
-#change concat to mean in following file names, if want mean version
-from model.AMBT_concat import AMBT
+from model.AMBT import AMBT
+from model.AMBT_FACL import AMBT_FACL
 from unimodal_models.Transformer_Video_concat import ViT_Encoder_Video
 from unimodal_models.Transformer_Audio_concat import ViT_Encoder_Audio, ast_feature_extract
 from unimodal_models.Transformer_EEG_concat import EEG_Encoder
@@ -57,6 +40,9 @@ def prepare_dataloader(x, y, batch_size, shuffle=False):
 
 if __name__ == "__main__":
     for sub in range(1,43):
+        
+        contrastive_loss=True 
+        
         model_aud = ViT_Encoder_Audio(classifier=True, img_size=[1024, 128], in_chans=1, patch_size=(16, 16), stride=10,
                                       embed_pos=True, fusion_layer=4)
         model_vid = ViT_Encoder_Video(classifier=True, img_size=(224, 224), in_chans=3, patch_size=(16, 16), stride=16,
@@ -66,14 +52,20 @@ if __name__ == "__main__":
 
 
         fusion_layer=8    
-        ambt = AMBT(
-            mlp_dim=3072, num_classes=5, num_layers=12, 
-            hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid,
-            representation_size=256,
-            return_prelogits=False, return_preclassifier=False
-        )
+        if contrastive_loss:
         
-        model_path = f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_ambt_epoch{epoch}.pth'
+            ambt = AMBT_FACL(
+                mlp_dim=3072, num_classes=5, num_layers=12,
+                hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid
+            )
+        
+        else:
+           ambt = AMBT(
+               mlp_dim=3072, num_classes=5, num_layers=12,
+               hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid
+           ) 
+        
+        model_path = f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_ambt_epoch10.pth'
         ambt.load_state_dict(torch.load(model_path), strict=False)
         
         
@@ -167,7 +159,10 @@ if __name__ == "__main__":
                 inputs['rgb'] = inputs['rgb'].view(-1, 3, 224, 224)
                 inputs = {k: v.float().to(device) for k, v in inputs.items()}
                 labels = labels.to(device)
-                outputs = ambt(inputs)
+                if contrastive_loss:
+                    outputs = ambt(inputs,labels)
+                else:
+                    outputs = ambt(inputs)
     
                 # Collect predictions and true labels for F1-score calculation
                 _, predicted = torch.max(outputs, dim=-1)

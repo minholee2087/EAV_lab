@@ -1,22 +1,11 @@
 import torch
 import os
-import numpy as np
-import pandas as pd
-from transformers import AutoFeatureExtractor, ASTForAudioClassification
-
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 import torch.optim as optim
-
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import AutoImageProcessor, AutoModelForImageClassification
-import torchaudio
-from transformers import AutoModelForAudioClassification
-from torchaudio.transforms import Resample
-from transformers import ASTFeatureExtractor
-#change concat to mean in following file names, if want mean version
-from model.AMBT_concat import AMBT
+from transformers import AutoImageProcessor
+from model.AMBT import AMBT
+from model.AMBT_FACL import AMBT_FACL
 from unimodal_models.Transformer_Video_concat import ViT_Encoder_Video
 from unimodal_models.Transformer_Audio_concat import ViT_Encoder_Audio, ast_feature_extract
 from unimodal_models.Transformer_EEG_concat import EEG_Encoder
@@ -55,6 +44,7 @@ mod_path = r'C:\Users\user.DESKTOP-HI4HHBR\Downloads\facial_emotions_image_detec
 for sub in range(1, 43):
 
     fusion_layer = 8
+    contrastive_loss=True
 
     model_aud = ViT_Encoder_Audio(classifier=True, img_size=[1024, 128], in_chans=1, patch_size=(16, 16), stride=10,
                                   embed_pos=True, fusion_layer=fusion_layer)
@@ -140,13 +130,19 @@ for sub in range(1, 43):
     test_dataloader = prepare_dataloader(te_x, te_y, batch_size=2, shuffle=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     modalities = ['rgb', 'spectrogram', 'eeg']
-
-    ambt = AMBT(
-        mlp_dim=3072, num_classes=5, num_layers=12,
-        hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid,
-        representation_size=256,
-        return_prelogits=False, return_preclassifier=False
-    )
+    
+    if contrastive_loss:
+    
+        ambt = AMBT_FACL(
+            mlp_dim=3072, num_classes=5, num_layers=12,
+            hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid
+        )
+    
+    else:
+       ambt = AMBT(
+           mlp_dim=3072, num_classes=5, num_layers=12,
+           hidden_size=768, fusion_layer=fusion_layer, model_eeg=model_eeg,model_aud=model_aud,model_vid=model_vid
+       ) 
 
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -176,6 +172,13 @@ for sub in range(1, 43):
         ambt.module.pos_embed_aud.requires_grad = False
         ambt.module.pos_embed_vid.requires_grad = False
         ambt.module.bottleneck.requires_grad = False
+        if contrastive_loss:
+            for param in ambt.module.lossav.parameters():
+                param.requires_grad = True
+            for param in ambt.module.lossev.parameters():
+                param.requires_grad = True
+            for param in ambt.module.lossae.parameters():
+                param.requires_grad = True
 
         if freeze:
             epochs = 5
@@ -215,15 +218,27 @@ for sub in range(1, 43):
 
                 inputs = {k: v.float().to(device) for k, v in inputs.items()}
                 labels = labels.to(device)
-                outputs = ambt(inputs)
-                if isinstance(outputs, dict):
-                    ce_loss = []
-                    for mod in outputs:
-                        ce_loss.append(criterion(outputs[mod], labels))
+                
+                if contrastive_loss:
+                    outputs,loss_facl = ambt(inputs,labels)
+                    if isinstance(outputs, dict):
+                        ce_loss = []
+                        for mod in outputs:
+                            ce_loss.append(criterion(outputs[mod], labels))
+                    else:
+                        break         
+                        
+                    loss = torch.mean(torch.stack(ce_loss))+torch.mean(loss_facl)
                 else:
-                    break
-
-                loss = torch.mean(torch.stack(ce_loss))
+                    outputs = ambt(inputs)
+                    if isinstance(outputs, dict):
+                        ce_loss = []
+                        for mod in outputs:
+                            ce_loss.append(criterion(outputs[mod], labels))
+                    else:
+                        break
+    
+                    loss = torch.mean(torch.stack(ce_loss))
                 loss.backward()
                 optimizer.step()
 
@@ -242,7 +257,10 @@ for sub in range(1, 43):
                     inputs['rgb'] = inputs['rgb'].view(-1, 3, 224, 224)
                     inputs = {k: v.float().to(device) for k, v in inputs.items()}
                     labels = labels.to(device)
-                    outputs = ambt(inputs)
+                    if contrastive_loss:
+                        outputs = ambt(inputs,labels)
+                    else:
+                        outputs = ambt(inputs)
 
                     # Collect predictions and true labels for F1-score calculation
                     _, predicted = torch.max(outputs, dim=-1)
@@ -263,7 +281,4 @@ for sub in range(1, 43):
                 f.write(
                     f'Subject {sub} Epoch {epoch} freeze:{freeze} Testing Accuracy: {test_accuracy:.4f} F1-score: {f1:.4f} \n')
 
-            if epoch >= 10 and epoch <= 18:
-                torch.save(ambt.module.state_dict(),
-                           f'D:\.spyder-py3\AMBT_finetuned\dropout_sub{sub}_ambt_epoch{epoch}.pth')
 
