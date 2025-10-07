@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
+import torch.nn.functional as F 
 from timm.layers import Mlp, use_fused_attn
 import numpy as np
 from transformers import AutoImageProcessor

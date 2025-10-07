@@ -11,7 +11,7 @@ class LayerScale(nn.Module):
     def __init__(
             self,
             dim: int,
-            init_values: float = 1e-5,
+            init_values: float = 1e-5, 
             inplace: bool = False,
     ) -> None:
         super().__init__()
